@@ -1,0 +1,6 @@
+{
+  "name": "burmesenlp-corpus",
+  "version": "0.1.0",
+  "description": "Bundled linguistic resources for burmesenlp",
+  "resources": []
+}

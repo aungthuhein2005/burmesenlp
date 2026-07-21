@@ -1,0 +1,86 @@
+"""Tokenization package: syllable, word, and sentence segmentation.
+
+Architecture
+------------
+Call sites use engine-dispatched helpers (``word_tokenize(engine=...)``).
+v1 provides only the rule-based ``longest`` word engine; v2+ statistical
+and neural tokenizers register in :mod:`burmesenlp.tokenize.engine` without
+reorganizing this package.
+"""
+
+from __future__ import annotations
+
+from typing import List, Optional
+
+from ..lexicon import Lexicon
+from ..normalize import normalize
+from .engine import available_word_engines, get_word_engine, register_word_engine
+from .longest import WordSegmenter
+from .sentence import Sentence, SentenceSegmenter
+from .syllable import (
+    ANUSVARA,
+    ASAT,
+    DIGITS,
+    FULL_STOP,
+    MEDIALS,
+    MY_DIGITS,
+    OTHER,
+    PUNCT,
+    SECTION,
+    STACK_VIRAMA,
+    SYLLABLE,
+    TONES,
+    Token,
+    VOWEL_SIGNS,
+    syllable_segment,
+    syllable_tokenize,
+    tokenize,
+)
+from .word import word_tokenize, word_tokens
+
+
+def sentence_tokenize(
+    text: str,
+    *,
+    lexicon: Optional[Lexicon] = None,
+    split_on_final_particles: bool = True,
+    engine: str = "longest",
+) -> List[str]:
+    """Segment *text* into sentences (via word tokens from *engine*)."""
+    from .engine import run_word_engine
+
+    lex = lexicon if lexicon is not None else Lexicon.default()
+    norm = normalize(text)
+    words = run_word_engine(text, engine=engine, lexicon=lex)
+    sentencer = SentenceSegmenter(split_on_final_particles=split_on_final_particles)
+    return [s.text for s in sentencer.segment(words, norm)]
+
+
+__all__ = [
+    "ANUSVARA",
+    "ASAT",
+    "DIGITS",
+    "FULL_STOP",
+    "MEDIALS",
+    "MY_DIGITS",
+    "OTHER",
+    "PUNCT",
+    "SECTION",
+    "STACK_VIRAMA",
+    "SYLLABLE",
+    "TONES",
+    "Token",
+    "VOWEL_SIGNS",
+    "Sentence",
+    "SentenceSegmenter",
+    "WordSegmenter",
+    "available_word_engines",
+    "get_word_engine",
+    "register_word_engine",
+    "sentence_tokenize",
+    "syllable_segment",
+    "syllable_tokenize",
+    "tokenize",
+    "word_tokenize",
+    "word_tokens",
+]

@@ -1,0 +1,2 @@
+# location gazetteer, one per line
+

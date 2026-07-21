@@ -1,0 +1,348 @@
+"""Validated word lexicon (dictionary) with POS tags.
+
+Unlike the prototype, loading errors are *raised* (``LexiconError``), never
+silently swallowed, and every entry is schema-validated so malformed data
+cannot corrupt downstream segmentation or tagging.
+
+JSON (``{"word": ["tag", ...], ...}``) is the canonical storage format.
+A line-based ``.txt`` import (``word\\ttag1,tag2``) is also supported for
+hand-authored or spreadsheet-exported word lists; it is converted into the
+same in-memory structure.  Custom files merge on top of the seed lexicon
+with per-word tag union rather than replacing it.
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+import os
+import tempfile
+from typing import Dict, Iterable, List, Mapping, MutableMapping, Tuple
+
+from .. import grammar
+from ..normalize import normalize
+
+logger = logging.getLogger(__name__)
+
+# Tagset matches myPOS (Ye Kyaw Thu et al.), plus ``unk`` as a fallback.
+POS_TAGS: Dict[str, str] = {
+    "n": "noun",
+    "v": "verb",
+    "adj": "adjective",
+    "adv": "adverb",
+    "part": "particle",
+    "num": "number (digits)",
+    "tn": "text number",
+    "pron": "pronoun",
+    "conj": "conjunction",
+    "ppm": "postpositional marker",
+    "abb": "abbreviation",
+    "int": "interjection",
+    "fw": "foreign word",
+    "sb": "symbol",
+    "punc": "punctuation",
+    "unk": "unknown",
+}
+
+# When a word carries several tags, they are stored in this priority order
+# so that ``tags(word)[0]`` is a sensible context-free default (function
+# words before content words).  The prototype sorted alphabetically, which
+# made e.g. 'adj' always beat 'ppm'.  ``tn`` outranks ``num`` so text
+# numerals prefer the myPOS text-number tag when both are present.
+TAG_PREFERENCE: Tuple[str, ...] = (
+    "punc", "sb", "ppm", "part", "conj", "pron", "tn", "num",
+    "adv", "adj", "v", "n", "abb", "int", "fw", "unk",
+)
+
+
+class LexiconError(ValueError):
+    """Raised when a lexicon file or entry is invalid."""
+
+
+# ---------------------------------------------------------------------------
+# Seed data (small starter lexicon; extend via JSON or Lexicon.add)
+# ---------------------------------------------------------------------------
+
+_SEED_NOUNS = (
+    "မြန်မာ", "စာ", "စာပေ", "စာအုပ်", "ကျောင်း", "ကျောင်းသား", "ကျောင်းသူ",
+    "အိမ်", "လမ်း", "ရေ", "နေ", "လ", "ခြင်း", "မှု", "သူ", "လူ", "ကလေး",
+    "မိန်းကလေး", "ယောက်ျား", "မိန်းမ", "ခွေး", "ကြောင်", "ငှက်", "ပန်း",
+    "သစ်ပင်", "နိုင်ငံ", "မြို့", "ရွာ", "ပြည်", "ခေါင်း", "လက်", "ခြေ",
+    "နှလုံး", "အစာ", "ဟင်း", "ဆန်", "အသား", "ငါး", "ပေ", "ဆရာ", "ဆရာမ",
+)
+_SEED_VERBS = (
+    "ဖတ်", "စား", "သောက်", "သွား", "လာ", "ကျ", "ရ", "ပြော", "ဟော", "ဖွင့်",
+    "ပိတ်", "ရေး", "ဖွဲ့", "စီစဉ်", "လုပ်", "ဆောင်", "ရှိ", "ဖြစ်",
+    "ပြုလုပ်", "ထား", "ယူ", "ပေး", "နေ", "စမ်း", "သပ်", "ကစား",
+)
+_SEED_ADJECTIVES = (
+    "ကြီး", "ငယ်", "လှ", "ရှည်", "တို", "ကောင်း", "ဆိုး", "မြင့်", "နိမ့်",
+    "လွယ်", "ခက်", "သစ်", "ဟောင်း",
+)
+_SEED_PRONOUNS = (
+    "ကျွန်တော်", "ကျွန်မ", "သူ", "သူမ", "ဒီ", "ဟို", "အဲဒီ", "ဘယ်သူ",
+    "ဘယ်", "အားလုံး", "ကိုယ်", "မိမိ", "ငါ", "မင်း",
+)
+_SEED_ADVERBS = (
+    "အရမ်း", "အလွန်", "သိပ်", "တော်တော်", "မကြာခဏ", "အမြဲ", "ဘယ်တော့မှ",
+)
+_SEED_PARTICLES = (
+    "သည်", "တယ်", "မည်", "ပြီ", "လား", "မလား", "၏",
+    "များ", "တွေ", "ပါ", "ကြ", "ခဲ့",
+)
+
+
+def _seed_entries() -> Dict[str, set]:
+    data: Dict[str, set] = {}
+
+    def put(words: Iterable[str], tag: str) -> None:
+        for w in words:
+            data.setdefault(w, set()).add(tag)
+
+    put(_SEED_NOUNS, "n")
+    put(_SEED_VERBS, "v")
+    put(_SEED_ADJECTIVES, "adj")
+    put(_SEED_PRONOUNS, "pron")
+    put(_SEED_ADVERBS, "adv")
+    put(_SEED_PARTICLES, "part")
+    put(grammar.PPM_MARKERS, "ppm")
+    put(grammar.CONJUNCTIONS, "conj")
+    put(grammar.NUMERAL_WORDS, "num")
+    return data
+
+
+def _read_text(path: str) -> str:
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read()
+    except OSError as exc:
+        raise LexiconError(f"cannot read dictionary file {path!r}: {exc}") from exc
+
+
+def _parse_json_entries(path: str, text: str) -> Dict[str, List[str]]:
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise LexiconError(f"invalid JSON in dictionary file {path!r}: {exc}") from exc
+    if not isinstance(data, dict):
+        raise LexiconError(
+            f"dictionary root must be a JSON object, got {type(data).__name__}"
+        )
+    entries: Dict[str, List[str]] = {}
+    for word, tags in data.items():
+        if not isinstance(word, str):
+            raise LexiconError(
+                f"dictionary keys must be strings, got {type(word).__name__}"
+            )
+        if isinstance(tags, str) or not isinstance(tags, (list, tuple)):
+            raise LexiconError(
+                f"tags for {word!r} must be a list of tag strings, got {tags!r}"
+            )
+        entries[word] = list(tags)
+    return entries
+
+
+def _parse_txt_entries(path: str, text: str) -> Dict[str, List[str]]:
+    """Parse ``word\\ttag1,tag2`` lines into a word -> tags mapping.
+
+    Blank lines and ``#`` comments are ignored.  Tags for the same word on
+    multiple lines are unioned.
+    """
+    entries: Dict[str, List[str]] = {}
+    for lineno, raw in enumerate(text.splitlines(), start=1):
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if "\t" not in raw:
+            raise LexiconError(
+                f"{path!r} line {lineno}: expected 'word<TAB>tag1,tag2', "
+                f"got {raw!r}"
+            )
+        word, _, tag_field = raw.partition("\t")
+        word = word.strip()
+        tags = [t.strip() for t in tag_field.split(",") if t.strip()]
+        if not word:
+            raise LexiconError(f"{path!r} line {lineno}: empty word")
+        if not tags:
+            raise LexiconError(f"{path!r} line {lineno}: word {word!r} has no POS tags")
+        existing = entries.setdefault(word, [])
+        for tag in tags:
+            if tag not in existing:
+                existing.append(tag)
+    return entries
+
+
+def _load_entries(path: str) -> Dict[str, List[str]]:
+    """Load dictionary entries from ``.json`` (canonical) or ``.txt`` (import)."""
+    ext = os.path.splitext(path)[1].lower()
+    text = _read_text(path)
+    if ext == ".json":
+        return _parse_json_entries(path, text)
+    if ext == ".txt":
+        return _parse_txt_entries(path, text)
+    raise LexiconError(
+        f"unsupported dictionary format {ext!r} for {path!r}; "
+        f"use .json (canonical) or .txt (import)"
+    )
+
+
+def _merge_entry_maps(
+    base: MutableMapping[str, set],
+    overlay: Mapping[str, Iterable[str]],
+) -> None:
+    """Union *overlay* tags into *base* word-by-word (in place)."""
+    for word, tags in overlay.items():
+        base.setdefault(word, set()).update(tags)
+
+
+class Lexicon:
+    """Word -> POS-tags mapping with syllable-aware longest-match support."""
+
+    def __init__(self, entries: Mapping[str, Iterable[str]]):
+        self._entries: Dict[str, Tuple[str, ...]] = {}
+        self._max_syllables = 1
+        for word, tags in entries.items():
+            self._insert(word, tags)
+
+    # -- construction -------------------------------------------------------
+
+    @classmethod
+    def default(cls) -> "Lexicon":
+        """Build the built-in seed lexicon."""
+        return cls(_seed_entries())
+
+    @classmethod
+    def _from_overlay(
+        cls,
+        overlay: Mapping[str, Iterable[str]],
+        path: str,
+        *,
+        merge_default: bool,
+    ) -> "Lexicon":
+        if merge_default:
+            data = _seed_entries()
+            _merge_entry_maps(data, overlay)
+            lexicon = cls(data)
+            logger.info(
+                "Merged %d dictionary entries from %s into seed lexicon "
+                "(%d total)",
+                len(overlay),
+                path,
+                len(lexicon),
+            )
+        else:
+            lexicon = cls(overlay)
+            logger.info("Loaded %d dictionary entries from %s", len(lexicon), path)
+        return lexicon
+
+    @classmethod
+    def from_file(cls, path: str, *, merge_default: bool = False) -> "Lexicon":
+        """Load a lexicon from ``.json`` or ``.txt``.
+
+        With ``merge_default=True`` (used by :class:`BurmeseNLP`), entries are
+        merged on top of the built-in seed lexicon with per-word tag union.
+        With ``merge_default=False``, only the file contents are loaded.
+
+        Raises ``LexiconError`` on unreadable files, bad format, or schema
+        violations -- never falls back silently.
+        """
+        return cls._from_overlay(
+            _load_entries(path), path, merge_default=merge_default
+        )
+
+    @classmethod
+    def from_json(cls, path: str, *, merge_default: bool = False) -> "Lexicon":
+        """Load a lexicon from canonical JSON: ``{"word": ["tag", ...], ...}``.
+
+        See :meth:`from_file` for ``merge_default`` semantics.
+        """
+        return cls._from_overlay(
+            _parse_json_entries(path, _read_text(path)),
+            path,
+            merge_default=merge_default,
+        )
+
+    @classmethod
+    def from_txt(cls, path: str, *, merge_default: bool = False) -> "Lexicon":
+        """Load a lexicon from a line-based import file: ``word\\ttag1,tag2``.
+
+        This is a convenience import format; :meth:`save` always writes JSON.
+        See :meth:`from_file` for ``merge_default`` semantics.
+        """
+        return cls._from_overlay(
+            _parse_txt_entries(path, _read_text(path)),
+            path,
+            merge_default=merge_default,
+        )
+    # -- mutation ------------------------------------------------------------
+
+    def add(self, word: str, tags: Iterable[str]) -> None:
+        """Add (or extend) a word with the given POS tags. O(1), no rebuild."""
+        self._insert(word, tags)
+
+    def merge(self, entries: Mapping[str, Iterable[str]]) -> None:
+        """Union *entries* into this lexicon word-by-word (O(n) inserts)."""
+        for word, tags in entries.items():
+            self._insert(word, tags)
+
+    def save(self, path: str) -> None:
+        """Atomically save the lexicon as UTF-8 JSON (canonical format)."""
+        payload = {w: list(t) for w, t in sorted(self._entries.items())}
+        directory = os.path.dirname(os.path.abspath(path)) or "."
+        fd, tmp = tempfile.mkstemp(dir=directory, suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                json.dump(payload, f, ensure_ascii=False, indent=2)
+            os.replace(tmp, path)
+        except BaseException:
+            if os.path.exists(tmp):
+                os.unlink(tmp)
+            raise
+
+    # -- lookup --------------------------------------------------------------
+
+    def tags(self, word: str) -> Tuple[str, ...]:
+        """POS tags for *word* in TAG_PREFERENCE order, or () if unknown."""
+        return self._entries.get(word, ())
+
+    @property
+    def max_word_syllables(self) -> int:
+        """Syllable count of the longest word (bounds longest-match search)."""
+        return self._max_syllables
+
+    def __contains__(self, word: str) -> bool:
+        return word in self._entries
+
+    def __len__(self) -> int:
+        return len(self._entries)
+
+    def words(self) -> Iterable[str]:
+        return self._entries.keys()
+
+    # -- internals -------------------------------------------------------------
+
+    def _insert(self, word: str, tags: Iterable[str]) -> None:
+        if not isinstance(word, str) or not word:
+            raise LexiconError(f"dictionary word must be a non-empty string, got {word!r}")
+        if any(c.isspace() for c in word):
+            raise LexiconError(f"dictionary word must not contain whitespace: {word!r}")
+        if isinstance(tags, str) or not isinstance(tags, (list, tuple, set, frozenset)):
+            raise LexiconError(
+                f"tags for {word!r} must be a list of tag strings, got {tags!r}"
+            )
+        tag_set = set(tags)
+        if not tag_set:
+            raise LexiconError(f"word {word!r} has no POS tags")
+        unknown = tag_set - POS_TAGS.keys()
+        if unknown:
+            raise LexiconError(
+                f"word {word!r} has unknown POS tags {sorted(unknown)}; "
+                f"valid tags: {sorted(POS_TAGS)}"
+            )
+
+        word = normalize(word)
+        merged = set(self._entries.get(word, ())) | tag_set
+        self._entries[word] = tuple(sorted(merged, key=TAG_PREFERENCE.index))
+        from ..tokenize.syllable import tokenize
+
+        self._max_syllables = max(self._max_syllables, len(tokenize(word)))
