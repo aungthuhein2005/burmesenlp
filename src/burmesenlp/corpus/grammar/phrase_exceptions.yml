@@ -1,0 +1,22 @@
+# Special cases that generic patterns cannot handle cleanly.
+
+version: 1
+
+exceptions:
+
+  fixed_expressions:
+    - text: မင်္ဂလာပါ
+      type: GREETING
+    - text: ကျေးဇူးတင်ပါတယ်
+      type: FIXED_EXPRESSION
+
+  never_split:
+    - မန္တလေး
+    - ရန်ကုန်
+    - မြန်မာဘာသာစကား
+
+  special_phrases:
+    - text: မင်္ဂလာပါ
+      chunk: GREETING
+    - text: အားနာပါတယ်
+      chunk: FIXED_VERB

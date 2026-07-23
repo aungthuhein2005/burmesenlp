@@ -10,7 +10,7 @@ _CORPUS_ROOT = Path(__file__).parent
 
 # Relative paths that ship inside the package.  Downloadable extras can be
 # registered later via metadata/corpus.json "resources" entries.
-_BUNDLED: Dict[str, Dict[str, str]] = {
+_BUNDLED: Dict[str, Dict[str, Any]] = {
     "dictionaries/words": {
         "path": "dictionaries/words.txt",
         "kind": "txt",

@@ -10,6 +10,8 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
+from ..chunking import PhraseChunker
+from ..chunking.models import Chunk
 from ..lexicon import Lexicon
 from ..normalize import normalize
 from ..tag.rule import POSTagger
@@ -28,6 +30,7 @@ from ..tokenize.syllable import (
     Token,
     tokenize,
 )
+from .document import Document
 
 
 class BurmeseNLP:
@@ -39,7 +42,7 @@ class BurmeseNLP:
 
     Loading a dictionary that does not exist or is malformed raises
     ``LexiconError`` instead of silently falling back.  Custom files
-    (``.json`` or ``.txt``) are merged on top of the built-in seed
+    (``.json`` or ``.txt``) are merged on top of the bundled default
     lexicon with per-word tag union; pass ``lexicon=...`` for full control.
     """
 
@@ -62,6 +65,7 @@ class BurmeseNLP:
             split_on_final_particles=split_on_final_particles
         )
         self._tagger = POSTagger(self.lexicon)
+        self._chunker = PhraseChunker()
 
     # ------------------------------------------------------------------
     # Internal helpers (operate on already-normalized text)
@@ -115,15 +119,32 @@ class BurmeseNLP:
         return self._tagger.tag(words)
 
     # ------------------------------------------------------------------
+    # Phrase chunking
+    # ------------------------------------------------------------------
+
+    def chunk_from_tokens(
+        self,
+        words: Sequence[str],
+        pos_tags: Sequence[object],
+    ) -> List[Chunk]:
+        """Chunk from words + POS tags (does not re-tag)."""
+        return self._chunker.chunk(words, pos_tags)
+
+    def chunk(self, text: str) -> List[Chunk]:
+        """Segment, POS-tag, then chunk *text*."""
+        words = self.word_segment(text)
+        return self.chunk_from_tokens(words, self.pos_tag(words))
+
+    # ------------------------------------------------------------------
     # Full pipeline
     # ------------------------------------------------------------------
 
-    def process(self, text: str) -> Dict:
+    def process(self, text: str) -> Document:
         """Run the full pipeline once, with all outputs mutually consistent.
 
         Flow: normalize → syllable tokenize → word tokenize → sentence
-        split → POS tag.  Words are segmented a single time and shared
-        by the sentence splitter and the tagger.
+        split → POS tag → phrase chunk.  Words are segmented a single time
+        and shared by the sentence splitter, tagger, and chunker.
         """
         norm = normalize(text)
         syllable_tokens = tokenize(norm)
@@ -131,6 +152,7 @@ class BurmeseNLP:
         words = [t.text for t in word_tokens]
         sentences = self._sentencer.segment(word_tokens, norm)
         pos_tags = self._tagger.tag(words)
+        chunks = self._chunker.chunk(words, pos_tags)
 
         sentence_word_tags: List[List[Tuple[str, str]]] = []
         idx = 0
@@ -139,14 +161,15 @@ class BurmeseNLP:
             sentence_word_tags.append(pos_tags[idx : idx + count])
             idx += count
 
-        return {
-            "raw_text": norm,
-            "syllables": [t.text for t in syllable_tokens],
-            "words": words,
-            "sentences": [s.text for s in sentences],
-            "pos_tags": pos_tags,
-            "sentence_word_tags": sentence_word_tags,
-        }
+        return Document(
+            raw_text=norm,
+            syllables=[t.text for t in syllable_tokens],
+            words=words,
+            sentences=[s.text for s in sentences],
+            pos_tags=pos_tags,
+            sentence_word_tags=sentence_word_tags,
+            chunks=chunks,
+        )
 
     # ------------------------------------------------------------------
     # Dictionary management
@@ -229,6 +252,6 @@ class BurmeseNLP:
         return features
 
 
-def process(text: str, **kwargs) -> Dict:
-    """One-shot pipeline: normalize → tokenize → sentences → POS tags."""
+def process(text: str, **kwargs) -> Document:
+    """One-shot pipeline: normalize → tokenize → sentences → POS → chunks."""
     return BurmeseNLP(**kwargs).process(text)

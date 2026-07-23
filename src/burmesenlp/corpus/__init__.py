@@ -1,21 +1,11 @@
-"""Bundled linguistic resources for burmesenlp (not ML model weights).
+"""Bundled resource scaffold for burmesenlp (not used by the V1 pipeline).
 
-Layout::
+Layout is reserved for later hybrid / ML versions.  Empty or stub trees
+(``ner/``, ``sentiment/``, ``spell/``, ``embeddings/``, ``tokenizer/``, …)
+are placeholders — not public V1 features.
 
-    corpus/
-    ├── dictionaries/   words, stopwords, slang, ...
-    ├── names/          person, locations, organizations, honorifics
-    ├── syllables/      syllable lists and patterns
-    ├── normalization/  unicode / zawgyi / punctuation rules
-    ├── tokenizer/      vocabulary JSON only (BPE / EvoPiece)
-    ├── pos/            tagset and lexicon JSON
-    ├── ner/            gazetteers and labels
-    ├── sentiment/      polarity and emotion lexicons
-    ├── spell/          frequency, confusion, corrections
-    └── metadata/       corpus.json registry snapshot
-
-Model artifacts (CRF, embeddings binaries, SentencePiece .model, …) belong
-under :mod:`burmesenlp.models`, not here.
+Production V1 linguistic data lives under ``burmesenlp.lexicon`` and
+``burmesenlp.zawgyi``.  See ``corpus/README.md`` for details.
 """
 
 from __future__ import annotations

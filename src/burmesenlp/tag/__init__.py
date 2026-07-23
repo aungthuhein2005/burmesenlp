@@ -2,7 +2,12 @@
 
 Architecture
 ------------
-v1: rule-based :class:`POSTagger` (``engine=\"rule\"``).
+v1 ``engine=\"rule\"``::
+
+    words → candidate POS → context rules → grammar rules → final POS
+
+Rules *filter* candidates (do not blindly assign).  See
+:mod:`burmesenlp.tag.rules` and :mod:`burmesenlp.tag.disambiguator`.
 v2+: CRF / hybrid; v3: Transformer — register in :mod:`burmesenlp.tag.engine`.
 """
 

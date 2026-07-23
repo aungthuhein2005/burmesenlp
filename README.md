@@ -1,128 +1,160 @@
-# burmesenlp
+# BurmeseNLP
 
-Myanmar (Burmese) NLP preprocessing toolkit: syllable, word and sentence
-segmentation, rule-based POS tagging, and Zawgyi/Unicode conversion.
+**BurmeseNLP** (`burmesenlp`) is an open-source Python library for rule-based
+Myanmar (Burmese) natural language processing.
 
-This is a hardened rewrite of a single-file prototype. Every weak point of
-the prototype was addressed:
-
-| Prototype weakness | Fix |
-| --- | --- |
-| Kinzi (`င်္`) and stack virama emitted as bogus one-char syllables | sylbreak-convention regex handles kinzi and stacked clusters |
-| Silent fallback when the dictionary file is missing/corrupt | `LexiconError` is raised; no silent behavior changes |
-| Custom dictionary replaced the seed lexicon entirely | Custom `.json`/`.txt` merges onto the seed with tag union |
-| No dictionary schema validation | Every entry is validated (word shape, tag names) |
-| Conjunctions forced sentence breaks mid-clause | Conjunctions never split; only ။ and strong final particles do |
-| `sentence_segment_with_positions` searched normalized text in the raw string | All offsets refer to the normalized text and are guaranteed exact |
-| `sentence_word_tags` could desync from `pos_tags` | Words are segmented once and shared by all pipeline stages |
-| Multi-char entries in char sets (`ော`, `ေါ`) never matched | Character sets contain single code points only |
-| `all(c in digits for c in '')` returned `True` | Empty strings handled explicitly |
-| Alphabetical first-tag lookup (`dictionary[word][0]`) | Tags stored in linguistic preference order (function words first) |
-| Full trie rebuild on every `add_to_dictionary` | O(1) incremental insert |
-| Self-test crashed on Windows cp1252 consoles | CLI reconfigures stdout/stderr to UTF-8 |
-| Zawgyi input processed silently | Heuristic detector logs a warning |
-
-## Install
+Version **1.0** focuses on production-ready preprocessing: normalization,
+Zawgyi ↔ Unicode conversion, syllable / word / sentence segmentation, lexicon
+management, and rule-based part-of-speech tagging. It is fast, dependency-light,
+and designed as the foundation for future hybrid and machine-learning engines.
 
 ```bash
-pip install -e .          # from this directory
-pip install -e .[dev]     # with pytest
+pip install burmesenlp
 ```
+
+```python
+from burmesenlp import process
+
+doc = process("ကျွန်တော်ကျောင်းသို့သွားသည်။")
+print(doc["words"])
+# ['ကျွန်တော်', 'ကျောင်း', 'သို့', 'သွား', 'သည်', '။']
+```
+
+No dictionary path or model download is required.
+
+## Features
+
+- **Normalization** — strip zero-width characters, Unicode NFC
+- **Zawgyi ↔ Unicode** — conversion rules plus a heuristic detector
+- **Syllable tokenization** — sylbreak-style boundaries
+- **Word segmentation** — dictionary longest-match (`engine="longest"`)
+- **Sentence segmentation** — `။` and strong final particles
+- **Lexicon** — bundled tagged vocabulary (~24k entries) + mergeable custom JSON/txt
+- **POS tagging** — rule / lexicon-based (`engine="rule"`)
+- **Pipeline API** — `process(text)` and stateful `BurmeseNLP`
+- **CLI** — `burmesenlp` console script
+
+## Installation
+
+```bash
+pip install burmesenlp
+```
+
+From a clone (development):
+
+```bash
+pip install -e ".[dev]"
+```
+
+Requires **Python 3.9+**. Runtime has **no third-party NLP dependencies**.
 
 ## Quick start
 
 ```python
-from burmesenlp import BurmeseNLP, process, word_tokenize, pos_tag
+from burmesenlp import BurmeseNLP, process, word_tokenize, pos_tag, zg2uni
+import json
 
-# One-shot pipeline
-result = process("စာပေကိုဖတ်သည်။သူကစားသည်။")
+# One-shot pipeline (returns a Document)
+doc = process("စာပေကိုဖတ်သည်။သူကစားသည်။")
+doc.words
+doc.sentences
+doc.pos_tags
+doc.chunks
 
-# Stateful pipeline (custom dictionary, options)
+# JSON export
+json.dumps(doc.to_dict(), ensure_ascii=False, indent=2)
+
+# Stateful pipeline
 nlp = BurmeseNLP()
 nlp.syllable_segment("မြန်မာစာပေ")
-nlp.word_segment("မြန်မာစာပေကိုစီစဉ်ခြင်း")
+nlp.word_segment("ကျွန်တော်ကျောင်းသို့သွားသည်")
 nlp.sentence_segment("စာပေကိုဖတ်သည်။သူကစားသည်။")
-nlp.pos_tag(nlp.word_segment("မြန်မာစာပေကိုဖတ်သည်"))
+nlp.pos_tag(["ကျွန်တော်", "ကျောင်း", "သို့", "သွား", "သည်"])
 
-# Engine-dispatched helpers (v1: longest / rule only)
-word_tokenize("မြန်မာစာပေ", engine="longest")
-pos_tag(["မြန်မာ", "စာပေ"], engine="rule")
+# Helpers
+word_tokenize("ကျွန်တော်ကျောင်းသို့သွားသည်", engine="longest")
+pos_tag(["ကျွန်တော်", "ကျောင်း"], engine="rule")
+zg2uni("ျမန္မာစာေပ")
 ```
 
 ### Custom dictionary
 
-Custom files **merge** onto the built-in seed lexicon (per-word tag union).
+`BurmeseNLP()` loads bundled `lexicon/data/*.json` merged with closed-class
+seed lists. Extra files **merge** onto that default (per-word tag union).
 Missing or malformed files raise `LexiconError` — there is no silent fallback.
 
 ```python
 nlp = BurmeseNLP(dictionary_path="my_dict.json")  # or .txt import
-nlp.add_to_dictionary("နည်းပညာ", ["n"])
+nlp.add_to_dictionary("နည်းပညာ", ["NOUN"])
 nlp.save_dictionary("my_dict.json")               # atomic JSON write
 ```
 
-**Canonical format (JSON)** — what `save_dictionary` writes and round-trips:
+**Canonical JSON:** `{ "word": ["tag1", "tag2"] }`
 
-```json
-{ "word": ["tag1", "tag2"] }
-```
-
-**Import format (`.txt`)** — for hand-authored / spreadsheet word lists:
-
-```
-word<TAB>tag1,tag2
-```
+**Import `.txt`:** `word<TAB>tag1,tag2`
 
 Tags must be from `burmesenlp.POS_TAGS`. To load a file *instead of* the
-seed lexicon (no merge), use `BurmeseNLP(lexicon=Lexicon.from_file(path))`.
+bundled default, use `BurmeseNLP(lexicon=Lexicon.from_file(path))`.
 
 ### CLI
 
 ```bash
-burmesenlp "မြန်မာစာပေကိုဖတ်သည်။"
-burmesenlp --mode words --json "မြန်မာစာပေ"
-echo "စာပေကိုဖတ်သည်။" | burmesenlp --mode sentences
-
-# Zawgyi <-> Unicode
+burmesenlp --mode words "ကျွန်တော်ကျောင်းသို့သွားသည်။"
+burmesenlp --json --mode process "စာပေကိုဖတ်သည်။"
 burmesenlp --mode zg2uni "ျမန္မာစာေပ"
-burmesenlp --mode uni2zg "မြန်မာစာပေ"
-burmesenlp --mode to-unicode "ျမန္မာစာေပ"   # detect + convert if needed
 ```
 
-Output is always UTF-8, including on Windows consoles.
+## Module overview
 
-## Conventions and known limitations
+| Module | Role |
+| --- | --- |
+| `pipeline` | `BurmeseNLP`, `process()` |
+| `normalize` | NFC / zero-width / Zawgyi heuristic |
+| `zawgyi` | `uni2zg` / `zg2uni` / `to_unicode` |
+| `tokenize` | syllable, word (`longest`), sentence |
+| `tag` | rule-based POS |
+| `lexicon` | dictionary load / merge / save |
+| `grammar` | closed-class lists |
+| `cli` | console entry point |
 
-- **Syllable convention (sylbreak).** Boundaries follow the widely used
-  sylbreak rule (Ye Kyaw Thu et al.): stacked Pali clusters and kinzi stay
-  attached to the preceding syllable, e.g. `မန္တလေး → မန္တ | လေး` and
-  `အင်္ဂါ → အင်္ဂါ`.
-- **Suffix particles are separate words.** Following the ALT / myPOS corpus
-  convention, `သည်`, `များ`, `တွေ` etc. are their own tokens rather than
-  fused onto the stem.
-- **Greedy longest match.** Word segmentation is deterministic greedy
-  longest-match against the dictionary, aligned to syllable boundaries and
-  never merging across whitespace. It is not globally optimal; accuracy
-  scales with dictionary size. The bundled seed lexicon (~150 words) is a
-  starting point — load a real lexicon for serious work.
-- **Sentence splitting on final particles** is a heuristic (configurable via
-  `BurmeseNLP(split_on_final_particles=False)`); quotatives (`ဟု`, `လို့`)
-  suppress the split.
-- **Zawgyi conversion is available** via `burmesenlp.zg2uni` / `uni2zg` /
-  `to_unicode`, or CLI `--mode zg2uni|uni2zg|to-unicode`. Detection is
-  heuristic; convert explicitly when you already know the encoding.
-- **Positions refer to normalized text** (zero-width characters stripped,
-  Unicode NFC). Call `burmesenlp.normalize(text)` to reproduce the exact
-  string the offsets index into.
+See [STRUCTURE.md](STRUCTURE.md) for the full layout. Packages such as
+`corpus/` and `models/` exist as scaffolds for later versions and are
+**not** used by the V1 pipeline.
 
-## Development
+## Current limitations
 
-```bash
-pytest
-```
+Version 1 is **rule-based only**:
+
+- No machine learning, Transformers, CRF, or embeddings
+- No SentencePiece / BPE / EvoPiece tokenizers
+- No NER, sentiment, or spell checking
+- Word segmentation quality depends on lexicon coverage; longest-match may
+  prefer compounds present in the dictionary
+- Zawgyi *detection* is heuristic — prefer explicit `zg2uni` when encoding
+  is known
+
+These gaps are intentional for a lightweight, deterministic V1.
+
+## Roadmap
+
+| Version | Focus |
+| --- | --- |
+| **1.x** | Rule-based production toolkit (this release) |
+| **2.x** | Hybrid NLP (rules + statistical models) via engine registries |
+| **3.x** | Deep learning backends |
+| **4.x** | Research platform (e.g. EvoPiece, benchmarks) |
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+Please keep V1 PRs focused on rule-based quality, packaging, docs, and tests —
+do not add unfinished ML features to the public API.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
 
 ## References
 
-- Ding et al. (2016) — Word Segmentation for Myanmar Language
-- Ding et al. (2017) — Sentence Segmentation for Myanmar Language
-- Ye Kyaw Thu — sylbreak syllable segmentation rule
-- ALT Burmese Corpus (2017) — Asian Language Treebank
+- Ye Kyaw Thu et al., myPOS / sylbreak conventions for Myanmar NLP
+- Rabbit Converter–style Zawgyi ↔ Unicode rule tables

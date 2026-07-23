@@ -5,24 +5,44 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "burmesenlp"
 version = "1.0.0"
-description = "Production-oriented Myanmar (Burmese) NLP preprocessing: syllable, word and sentence segmentation plus rule-based POS tagging."
+description = "Production-oriented Myanmar (Burmese) NLP preprocessing: syllable, word and sentence segmentation, rule-based POS tagging, and phrase chunking."
 readme = "README.md"
+license = { text = "MIT" }
 requires-python = ">=3.9"
-authors = [{ name = "BurmeseNLP Toolkit" }]
-keywords = ["myanmar", "burmese", "nlp", "segmentation", "pos-tagging"]
+authors = [{ name = "BurmeseNLP contributors" }]
+keywords = ["myanmar", "burmese", "nlp", "segmentation", "pos-tagging", "chunking"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
     "Natural Language :: Burmese",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Topic :: Text Processing :: Linguistic",
 ]
+dependencies = [
+    "PyYAML>=6.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/aungthuhein2005/burmesenlp"
+Repository = "https://github.com/aungthuhein2005/burmesenlp"
+Issues = "https://github.com/aungthuhein2005/burmesenlp/issues"
+Changelog = "https://github.com/aungthuhein2005/burmesenlp/blob/main/CHANGELOG.md"
 
 [project.scripts]
 burmesenlp = "burmesenlp.cli:main"
 
 [project.optional-dependencies]
-dev = ["pytest>=7.0"]
+dev = [
+    "pytest>=7.0",
+    "ruff>=0.4",
+    "mypy>=1.8,<2",
+    "build>=1.0",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -31,11 +51,35 @@ where = ["src"]
 burmesenlp = [
     "py.typed",
     "zawgyi/*.json",
+    "lexicon/data/*.json",
     "corpus/**/*.txt",
     "corpus/**/*.json",
+    "corpus/grammar/*.yaml",
+    "corpus/grammar/*.yml",
 ]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
 addopts = "-q"
+markers = [
+    "packaging: slow wheel/venv install checks (set BURMESENLP_PACKAGING_TEST=1)",
+]
+
+[tool.ruff]
+target-version = "py39"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.9"
+files = ["src/burmesenlp"]
+warn_return_any = false
+warn_unused_ignores = true
+ignore_missing_imports = true
+check_untyped_defs = false
+disallow_untyped_defs = false

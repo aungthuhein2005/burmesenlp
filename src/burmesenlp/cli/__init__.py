@@ -84,33 +84,47 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 2
 
     if args.mode == "syllables":
-        out = nlp.syllable_segment(text)
+        syllables = nlp.syllable_segment(text)
+        if args.json:
+            print(json.dumps(syllables, ensure_ascii=False, indent=2))
+        else:
+            print(" | ".join(syllables))
     elif args.mode == "words":
-        out = nlp.word_segment(text)
+        words = nlp.word_segment(text)
+        if args.json:
+            print(json.dumps(words, ensure_ascii=False, indent=2))
+        else:
+            print(" | ".join(words))
     elif args.mode == "sentences":
-        out = nlp.sentence_segment(text)
+        sentences = nlp.sentence_segment(text)
+        if args.json:
+            print(json.dumps(sentences, ensure_ascii=False, indent=2))
+        else:
+            print(" | ".join(sentences))
     elif args.mode == "pos":
-        out = nlp.pos_tag(nlp.word_segment(text))
+        tags = nlp.pos_tag(nlp.word_segment(text))
+        if args.json:
+            print(json.dumps(tags, ensure_ascii=False, indent=2))
+        else:
+            for word, tag in tags:
+                print(f"{word}\t{tag}")
     else:
-        out = nlp.process(text)
-
-    if args.json:
-        print(json.dumps(out, ensure_ascii=False, indent=2))
-    elif args.mode == "pos":
-        for word, tag in out:  # type: ignore[union-attr]
-            print(f"{word}\t{tag}")
-    elif args.mode == "all":
-        result = out  # type: ignore[assignment]
-        print("Syllables:", " | ".join(result["syllables"]))
-        print("Words:    ", " | ".join(result["words"]))
-        print("Sentences:")
-        for s in result["sentences"]:
-            print(f"  - {s}")
-        print("POS tags:")
-        for word, tag in result["pos_tags"]:
-            print(f"  {word}\t{tag}")
-    else:
-        print(" | ".join(out))  # type: ignore[arg-type]
+        result = nlp.process(text)
+        if args.json:
+            print(json.dumps(result.to_dict(), ensure_ascii=False, indent=2))
+        else:
+            print("Syllables:", " | ".join(result["syllables"]))
+            print("Words:    ", " | ".join(result["words"]))
+            print("Sentences:")
+            for s in result["sentences"]:
+                print(f"  - {s}")
+            print("POS tags:")
+            for word, tag in result["pos_tags"]:
+                print(f"  {word}\t{tag}")
+            if result.chunks:
+                print("Chunks:")
+                for ch in result.chunks:
+                    print(f"  {ch.type.value}\t{ch.text}")
 
     return 0
 

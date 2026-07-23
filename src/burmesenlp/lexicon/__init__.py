@@ -17,6 +17,7 @@ import json
 import logging
 import os
 import tempfile
+from pathlib import Path
 from typing import Dict, Iterable, List, Mapping, MutableMapping, Tuple
 
 from .. import grammar
@@ -24,34 +25,35 @@ from ..normalize import normalize
 
 logger = logging.getLogger(__name__)
 
-# Tagset matches myPOS (Ye Kyaw Thu et al.), plus ``unk`` as a fallback.
+_DATA_DIR = Path(__file__).resolve().parent / "data"
+
+# BurmeseNLP v1 tagset (uppercase).  ABB/FW/SB/UNK kept for dictionary coverage.
 POS_TAGS: Dict[str, str] = {
-    "n": "noun",
-    "v": "verb",
-    "adj": "adjective",
-    "adv": "adverb",
-    "part": "particle",
-    "num": "number (digits)",
-    "tn": "text number",
-    "pron": "pronoun",
-    "conj": "conjunction",
-    "ppm": "postpositional marker",
-    "abb": "abbreviation",
-    "int": "interjection",
-    "fw": "foreign word",
-    "sb": "symbol",
-    "punc": "punctuation",
-    "unk": "unknown",
+    "NOUN": "noun",
+    "VERB": "verb",
+    "ADJ": "adjective",
+    "ADV": "adverb",
+    "PRON": "pronoun",
+    "NUM": "number (digits or text)",
+    "CONJ": "conjunction",
+    "INTJ": "interjection",
+    "PUNCT": "punctuation",
+    "POSTP": "postposition / case marker",
+    "PART": "particle",
+    "AUX": "auxiliary",
+    "SFP": "sentence-final particle",
+    "ABB": "abbreviation",
+    "FW": "foreign word",
+    "SB": "symbol",
+    "UNK": "unknown",
 }
 
 # When a word carries several tags, they are stored in this priority order
 # so that ``tags(word)[0]`` is a sensible context-free default (function
-# words before content words).  The prototype sorted alphabetically, which
-# made e.g. 'adj' always beat 'ppm'.  ``tn`` outranks ``num`` so text
-# numerals prefer the myPOS text-number tag when both are present.
+# words before content words).
 TAG_PREFERENCE: Tuple[str, ...] = (
-    "punc", "sb", "ppm", "part", "conj", "pron", "tn", "num",
-    "adv", "adj", "v", "n", "abb", "int", "fw", "unk",
+    "PUNCT", "SB", "POSTP", "SFP", "PART", "AUX", "CONJ", "PRON", "NUM",
+    "ADV", "ADJ", "VERB", "NOUN", "ABB", "INTJ", "FW", "UNK",
 )
 
 
@@ -69,15 +71,16 @@ _SEED_NOUNS = (
     "မိန်းကလေး", "ယောက်ျား", "မိန်းမ", "ခွေး", "ကြောင်", "ငှက်", "ပန်း",
     "သစ်ပင်", "နိုင်ငံ", "မြို့", "ရွာ", "ပြည်", "ခေါင်း", "လက်", "ခြေ",
     "နှလုံး", "အစာ", "ဟင်း", "ဆန်", "အသား", "ငါး", "ပေ", "ဆရာ", "ဆရာမ",
+    "သွား",  # also verb "to go"; disambiguated by context rules
 )
 _SEED_VERBS = (
     "ဖတ်", "စား", "သောက်", "သွား", "လာ", "ကျ", "ရ", "ပြော", "ဟော", "ဖွင့်",
     "ပိတ်", "ရေး", "ဖွဲ့", "စီစဉ်", "လုပ်", "ဆောင်", "ရှိ", "ဖြစ်",
-    "ပြုလုပ်", "ထား", "ယူ", "ပေး", "နေ", "စမ်း", "သပ်", "ကစား",
+    "ပြုလုပ်", "ထား", "ယူ", "ပေး", "နေ", "စမ်း", "သပ်", "ကစား", "ခံစား",
 )
 _SEED_ADJECTIVES = (
     "ကြီး", "ငယ်", "လှ", "ရှည်", "တို", "ကောင်း", "ဆိုး", "မြင့်", "နိမ့်",
-    "လွယ်", "ခက်", "သစ်", "ဟောင်း",
+    "လွယ်", "ခက်", "သစ်", "ဟောင်း", "ပို",
 )
 _SEED_PRONOUNS = (
     "ကျွန်တော်", "ကျွန်မ", "သူ", "သူမ", "ဒီ", "ဟို", "အဲဒီ", "ဘယ်သူ",
@@ -85,11 +88,36 @@ _SEED_PRONOUNS = (
 )
 _SEED_ADVERBS = (
     "အရမ်း", "အလွန်", "သိပ်", "တော်တော်", "မကြာခဏ", "အမြဲ", "ဘယ်တော့မှ",
+    "ပို",
 )
 _SEED_PARTICLES = (
-    "သည်", "တယ်", "မည်", "ပြီ", "လား", "မလား", "၏",
-    "များ", "တွေ", "ပါ", "ကြ", "ခဲ့",
+    "များ", "တွေ", "ပါ", "ကြ", "မ",
 )
+_SEED_SFP = (
+    "သည်", "တယ်", "မည်", "ပြီ", "လား", "မလား", "၏",
+)
+_SEED_AUX = (
+    "နေ", "ထား", "ခဲ့", "ပေး", "လိုက်", "ပစ်", "ဖူး",
+)
+
+# Closed-class / high-ambiguity words.  Applied as a *replace* after
+# seed+JSON merge so Stage 1 always sees the full candidate set.
+_CANONICAL_TAGS: Dict[str, Tuple[str, ...]] = {
+    "သွား": ("VERB", "NOUN"),
+    "ထား": ("VERB", "AUX"),
+    "ပို": ("ADV", "ADJ"),
+    "က": ("POSTP", "PART", "CONJ"),
+    "သည်": ("SFP", "PART"),
+    "တယ်": ("SFP", "PART"),
+    "မည်": ("SFP", "PART"),
+    "ပြီ": ("SFP", "PART"),
+    "နေ": ("VERB", "NOUN", "AUX"),
+    "မ": ("PART",),
+    "အား": ("POSTP", "NOUN"),
+    "နှင့်": ("POSTP", "CONJ"),
+    "နဲ့": ("POSTP", "CONJ"),
+    "၏": ("POSTP", "PART"),
+}
 
 
 def _seed_entries() -> Dict[str, set]:
@@ -99,21 +127,33 @@ def _seed_entries() -> Dict[str, set]:
         for w in words:
             data.setdefault(w, set()).add(tag)
 
-    put(_SEED_NOUNS, "n")
-    put(_SEED_VERBS, "v")
-    put(_SEED_ADJECTIVES, "adj")
-    put(_SEED_PRONOUNS, "pron")
-    put(_SEED_ADVERBS, "adv")
-    put(_SEED_PARTICLES, "part")
-    put(grammar.PPM_MARKERS, "ppm")
-    put(grammar.CONJUNCTIONS, "conj")
-    put(grammar.NUMERAL_WORDS, "num")
+    put(_SEED_NOUNS, "NOUN")
+    put(_SEED_VERBS, "VERB")
+    put(_SEED_ADJECTIVES, "ADJ")
+    put(_SEED_PRONOUNS, "PRON")
+    put(_SEED_ADVERBS, "ADV")
+    put(_SEED_PARTICLES, "PART")
+    put(_SEED_SFP, "SFP")
+    put(_SEED_AUX, "AUX")
+    put(grammar.PPM_MARKERS, "POSTP")
+    put(grammar.CONJUNCTIONS, "CONJ")
+    put(grammar.NUMERAL_WORDS, "NUM")
     return data
+
+
+def _apply_canonical_tags(lexicon: "Lexicon") -> None:
+    """Replace tags for known ambiguous/closed-class words (see ``_CANONICAL_TAGS``)."""
+    for word, tags in _CANONICAL_TAGS.items():
+        key = normalize(word, warn_zawgyi=False)
+        lexicon._entries[key] = tuple(sorted(set(tags), key=TAG_PREFERENCE.index))
+        from ..tokenize.syllable import tokenize
+
+        lexicon._max_syllables = max(lexicon._max_syllables, len(tokenize(key)))
 
 
 def _read_text(path: str) -> str:
     try:
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, "r", encoding="utf-8-sig") as f:
             return f.read()
     except OSError as exc:
         raise LexiconError(f"cannot read dictionary file {path!r}: {exc}") from exc
@@ -195,6 +235,36 @@ def _merge_entry_maps(
         base.setdefault(word, set()).update(tags)
 
 
+def _sanitize_entries(
+    entries: Mapping[str, Iterable[str]],
+    source: str,
+) -> Dict[str, List[str]]:
+    """Normalize keys and drop empty-after-normalization entries.
+
+    Zero-width-only keys (common in scraped myPOS dumps) are skipped with a
+    warning rather than aborting the whole load.  Tags for keys that collide
+    after normalization are unioned.
+    """
+    cleaned: Dict[str, List[str]] = {}
+    skipped = 0
+    for word, tags in entries.items():
+        key = normalize(word, warn_zawgyi=False)
+        if not key:
+            skipped += 1
+            continue
+        existing = cleaned.setdefault(key, [])
+        for tag in tags:
+            if tag not in existing:
+                existing.append(tag)
+    if skipped:
+        logger.warning(
+            "Skipped %d empty-after-normalization entries in %s",
+            skipped,
+            source,
+        )
+    return cleaned
+
+
 class Lexicon:
     """Word -> POS-tags mapping with syllable-aware longest-match support."""
 
@@ -208,8 +278,44 @@ class Lexicon:
 
     @classmethod
     def default(cls) -> "Lexicon":
-        """Build the built-in seed lexicon."""
-        return cls(_seed_entries())
+        """Build the built-in lexicon: closed-class seed + bundled JSON files.
+
+        Every ``lexicon/data/*.json`` file is merged (sorted by filename) onto
+        the in-code seed / grammar lists so function words keep preferred
+        multi-tag sets when both sources list a word.  Additional files in
+        that directory are picked up automatically.
+        """
+        data = _seed_entries()
+        json_files = sorted(_DATA_DIR.glob("*.json")) if _DATA_DIR.is_dir() else []
+        if not json_files:
+            logger.warning(
+                "No bundled lexicon JSON under %s; using seed only",
+                _DATA_DIR,
+            )
+            lexicon = cls(data)
+            _apply_canonical_tags(lexicon)
+            return lexicon
+
+        bundled = 0
+        for path in json_files:
+            cleaned = _sanitize_entries(
+                _parse_json_entries(str(path), _read_text(str(path))),
+                path.name,
+            )
+            _merge_entry_maps(data, cleaned)
+            bundled += len(cleaned)
+
+        lexicon = cls(data)
+        _apply_canonical_tags(lexicon)
+        logger.info(
+            "Loaded default lexicon from %d JSON file(s) under %s "
+            "(%d bundled entries, %d total)",
+            len(json_files),
+            _DATA_DIR.name,
+            bundled,
+            len(lexicon),
+        )
+        return lexicon
 
     @classmethod
     def _from_overlay(
@@ -219,19 +325,19 @@ class Lexicon:
         *,
         merge_default: bool,
     ) -> "Lexicon":
+        cleaned = _sanitize_entries(overlay, path)
         if merge_default:
-            data = _seed_entries()
-            _merge_entry_maps(data, overlay)
-            lexicon = cls(data)
+            lexicon = cls.default()
+            lexicon.merge(cleaned)
             logger.info(
-                "Merged %d dictionary entries from %s into seed lexicon "
+                "Merged %d dictionary entries from %s into default lexicon "
                 "(%d total)",
-                len(overlay),
+                len(cleaned),
                 path,
                 len(lexicon),
             )
         else:
-            lexicon = cls(overlay)
+            lexicon = cls(cleaned)
             logger.info("Loaded %d dictionary entries from %s", len(lexicon), path)
         return lexicon
 
@@ -240,7 +346,7 @@ class Lexicon:
         """Load a lexicon from ``.json`` or ``.txt``.
 
         With ``merge_default=True`` (used by :class:`BurmeseNLP`), entries are
-        merged on top of the built-in seed lexicon with per-word tag union.
+        merged on top of :meth:`default` with per-word tag union.
         With ``merge_default=False``, only the file contents are loaded.
 
         Raises ``LexiconError`` on unreadable files, bad format, or schema
@@ -340,7 +446,12 @@ class Lexicon:
                 f"valid tags: {sorted(POS_TAGS)}"
             )
 
-        word = normalize(word)
+        word = normalize(word, warn_zawgyi=False)
+        if not word:
+            raise LexiconError(
+                "dictionary word is empty after normalization "
+                "(zero-width-only entries are not allowed)"
+            )
         merged = set(self._entries.get(word, ())) | tag_set
         self._entries[word] = tuple(sorted(merged, key=TAG_PREFERENCE.index))
         from ..tokenize.syllable import tokenize

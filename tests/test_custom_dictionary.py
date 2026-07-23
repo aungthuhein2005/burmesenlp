@@ -1,4 +1,4 @@
-"""Tests against the checked-in myPOS-style dictionary fixture."""
+"""Tests against the checked-in dictionary fixture."""
 
 from pathlib import Path
 
@@ -18,30 +18,25 @@ def test_custom_entries_are_loaded(nlp):
     assert "ကွန်ပျူတာ" in nlp.lexicon
     assert "အင်တာနက်" in nlp.lexicon
     assert "ပရိုဂရမ်" in nlp.lexicon
-    assert nlp.lexicon.tags("ကွန်ပျူတာ") == ("n",)
-    assert nlp.lexicon.tags("ပရိုဂရမ်") == ("n",)
-    assert nlp.lexicon.tags("စစ်ဆေး") == ("v",)
+    assert nlp.lexicon.tags("ကွန်ပျူတာ") == ("NOUN",)
+    assert nlp.lexicon.tags("ပရိုဂရမ်") == ("NOUN",)
+    assert nlp.lexicon.tags("စစ်ဆေး") == ("VERB",)
 
 
-def test_mypos_tags_tn_and_sb_are_accepted(nlp):
-    # myPOS distinguishes digit numbers (num) from text numbers (tn),
-    # and symbols (sb) from punctuation (punc).
-    assert "tn" in nlp.lexicon.tags("ရှစ်")
-    assert nlp.lexicon.tags("%") == ("sb",)
+def test_num_and_symbol_tags_are_accepted(nlp):
+    assert "NUM" in nlp.lexicon.tags("ရှစ်")
+    assert nlp.lexicon.tags("%") == ("SB",)
 
 
 def test_seed_lexicon_survives_merge(nlp):
-    # Domain overlay must not replace the built-in seed.
     assert "ရှိ" in nlp.lexicon
     assert "ကို" in nlp.lexicon
     assert "ကျွန်တော်" in nlp.lexicon
 
 
 def test_overlapping_word_unions_tags(nlp):
-    # Seed tags ရှစ် as num; custom adds tn — merge keeps both.
-    assert set(nlp.lexicon.tags("ရှစ်")) == {"num", "tn"}
-    # Preference order surfaces tn first for text numerals.
-    assert nlp.lexicon.tags("ရှစ်")[0] == "tn"
+    # Custom NUM merges with seed NUM for ရှစ်.
+    assert "NUM" in nlp.lexicon.tags("ရှစ်")
 
 
 def test_domain_word_segmentation(nlp):
@@ -56,7 +51,7 @@ def test_domain_word_segmentation(nlp):
 
 def test_domain_pos_tags(nlp):
     tagged = dict(nlp.pos_tag(nlp.word_segment("ကွန်ပျူတာကိုစစ်ဆေးသည်")))
-    assert tagged["ကွန်ပျူတာ"] == "n"
-    assert tagged["ကို"] == "ppm"
-    assert tagged["စစ်ဆေး"] == "v"
-    assert tagged["သည်"] == "part"
+    assert tagged["ကွန်ပျူတာ"] == "NOUN"
+    assert tagged["ကို"] == "POSTP"
+    assert tagged["စစ်ဆေး"] == "VERB"
+    assert tagged["သည်"] == "SFP"

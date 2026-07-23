@@ -1,0 +1,82 @@
+# Main phrase-chunking grammar (linguist-editable).
+# Quote atoms that contain ?, *, or | so YAML flow lists stay valid.
+# PROPN aliases to NOUN at match time.
+
+version: 1
+
+phrases:
+
+  # =========================
+  # Verb Phrase (VP) — high priority
+  # =========================
+  - name: VERB_PHRASE
+    type: VP
+    priority: 200
+    patterns:
+      - ["PART", "VERB", "AUX*", "PART*", "SFP?"]
+      - ["ADV?", "VERB", "AUX+", "PART*", "SFP?"]
+      - ["VERB", "AUX", "PART", "SFP"]
+      - ["VERB", "AUX", "SFP"]
+      - ["VERB", "AUX"]
+      - ["VERB", "AUX+", "SFP?"]
+      - ["VERB", "AUX", "PART*"]
+      - ["VERB"]
+
+  # =========================
+  # Clause (composed; low priority — markers drive primary clause splits)
+  # =========================
+  - name: CLAUSE
+    type: CLAUSE
+    priority: 50
+    patterns:
+      - ["NOUN_PHRASE", "POSTPOSITIONAL_PHRASE", "VERB_PHRASE"]
+      - ["NOUN_PHRASE", "VERB_PHRASE"]
+      - ["POSTPOSITIONAL_PHRASE", "VERB_PHRASE"]
+
+  # =========================
+  # Postpositional Phrase (PP)
+  # =========================
+  - name: POSTPOSITIONAL_PHRASE
+    type: PP
+    priority: 150
+    patterns:
+      - ["NOUN_PHRASE", "POSTP"]
+      - ["(PROPN|NOUN|PRON|NUM)+", "POSTP"]
+      - ["NOUN", "POSTP"]
+
+  # =========================
+  # Noun Phrase (NP)
+  # =========================
+  - name: NOUN_PHRASE
+    type: NP
+    priority: 100
+    patterns:
+      - ["(PROPN|NOUN)+", "POSTP"]
+      - ["PRON", "PART", "SFP?"]
+      - ["PRON", "PART"]
+      - ["ADJ", "NOUN"]
+      - ["NUM", "NOUN"]
+      - ["NOUN", "NOUN+"]
+      - ["(PROPN|NOUN|PRON)+"]
+      - ["NOUN"]
+      - ["PRON"]
+
+  # =========================
+  # Adjective Phrase
+  # =========================
+  - name: ADJECTIVE_PHRASE
+    type: ADJP
+    priority: 80
+    patterns:
+      - ["ADV", "ADJ"]
+      - ["ADJ"]
+
+  # =========================
+  # Numeral Phrase
+  # =========================
+  - name: NUMERAL_PHRASE
+    type: NUMP
+    priority: 70
+    patterns:
+      - ["NUM", "NOUN"]
+      - ["NUM"]

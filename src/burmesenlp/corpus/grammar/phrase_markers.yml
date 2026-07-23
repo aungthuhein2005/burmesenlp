@@ -1,0 +1,56 @@
+# Grammatical boundary markers for phrase / clause chunking.
+
+version: 1
+
+markers:
+
+  noun_phrase_end:
+    subject:
+      - က
+      - သည်
+      - မှာ
+    object:
+      - ကို
+      - အား
+    location:
+      - မှာ
+      - တွင်
+      - ၌
+      - ဝယ်
+    direction:
+      - သို့
+    source:
+      - မှ
+    possession:
+      - ၏
+      - ရဲ့
+    comparison:
+      - ထက်
+
+  verb_phrase_end:
+    sentence_final:
+      - တယ်
+      - သည်
+      - ပါ
+      - လေ
+      - ရယ်
+    tense:
+      - မယ်
+      - ပြီ
+    aspect:
+      - နေ
+      - ထား
+
+  clause_boundary:
+    conjunction:
+      - နှင့်
+      - ပြီး
+      - သော်လည်း
+      - လို့
+      - ဆို
+      - ဒါပေမယ့်
+      - ထို့ကြောင့်
+      - သို့သော်
+    conditional:
+      - လျှင်
+      - သော်

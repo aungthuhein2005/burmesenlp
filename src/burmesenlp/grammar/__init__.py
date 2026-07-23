@@ -37,6 +37,16 @@ VERB_SUFFIXES = frozenset({
     "ဖူး", "မည်", "ရန်", "စေ", "ပါ", "ကြ",
 })
 
+# Sentence-final / finite verbal particles that license a preceding verb.
+FINITE_VERB_PARTICLES = frozenset({"သည်", "တယ်", "မည်", "ပြီ", "လား", "မလား"})
+
+# Progressive / resultative auxiliaries that sit between a main verb and
+# a finite particle (e.g. ခံစား နေ တယ် → v part part).
+VERB_AUXILIARIES = frozenset({"နေ", "ခဲ့", "ထား", "ပေး", "လိုက်", "ပစ်", "ဖူး"})
+
+# Pre-verbal negation particle (မ + VERB).
+NEGATION_PARTICLE = "မ"
+
 # Productive nominalizers / plural markers (used for POS suffix analysis)
 NOUN_SUFFIXES = frozenset({"များ", "တွေ", "မှု", "ချက်", "ခြင်း", "ရေး"})
 

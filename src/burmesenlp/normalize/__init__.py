@@ -34,20 +34,21 @@ def looks_like_zawgyi(text: str) -> bool:
     return bool(_ZAWGYI_HINTS.search(text))
 
 
-def normalize(text: str) -> str:
+def normalize(text: str, *, warn_zawgyi: bool = True) -> str:
     """Normalize Myanmar text for segmentation.
 
     - Validates the input type (raises ``TypeError`` for non-``str``).
     - Strips zero-width space/joiner/non-joiner, word-joiner and BOM.
     - Applies Unicode NFC (e.g. composes U+1025 U+102E into U+1026).
     - Logs a warning if the text looks Zawgyi-encoded; conversion to
-      Unicode must be done by the caller.
+      Unicode must be done by the caller.  Pass ``warn_zawgyi=False`` when
+      normalizing dictionary keys in bulk (avoids noisy false positives).
     """
     if not isinstance(text, str):
         raise TypeError(f"expected str, got {type(text).__name__}")
     if not text:
         return ""
-    if looks_like_zawgyi(text):
+    if warn_zawgyi and looks_like_zawgyi(text):
         logger.warning(
             "Input looks like Zawgyi-encoded text; segmentation results "
             "will be unreliable. Convert to Unicode first."

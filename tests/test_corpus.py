@@ -1,5 +1,7 @@
 """Tests for the corpus resource package scaffold."""
 
+import pytest
+
 from burmesenlp.corpus import (
     cache_dir,
     list_resources,
@@ -10,8 +12,6 @@ from burmesenlp.corpus import (
 )
 from burmesenlp.corpus.loader import CorpusError
 from burmesenlp.corpus.registry import corpus_root
-
-import pytest
 
 
 def test_list_resources_includes_bundled_entries():

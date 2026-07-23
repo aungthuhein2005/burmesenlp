@@ -14,8 +14,8 @@ from ..tokenize.syllable import (
     STACK_VIRAMA,
     SYLLABLE,
     TONES,
-    Token,
     VOWEL_SIGNS,
+    Token,
     syllable_segment,
     tokenize,
 )

@@ -2,9 +2,9 @@
 
 import pytest
 
-from burmesenlp import BurmeseNLP, process, pos_tag, word_tokenize
-from burmesenlp.tokenize import available_word_engines, sentence_tokenize, syllable_tokenize
+from burmesenlp import BurmeseNLP, pos_tag, process, word_tokenize
 from burmesenlp.tag import available_tag_engines
+from burmesenlp.tokenize import available_word_engines, sentence_tokenize, syllable_tokenize
 
 
 def test_process_matches_burmesenlp_instance():
