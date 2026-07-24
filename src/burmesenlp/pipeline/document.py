@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, Iterator, List, Tuple
 
 from ..chunking.models import Chunk
+from ..mwe.models import MWEToken
 
 
 @dataclass
@@ -25,6 +26,7 @@ class Document:
     pos_tags: List[Tuple[str, str]]
     sentence_word_tags: List[List[Tuple[str, str]]]
     chunks: List[Chunk] = field(default_factory=list)
+    mwe: List[MWEToken] = field(default_factory=list)
 
     _KEYS = (
         "raw_text",
@@ -34,6 +36,7 @@ class Document:
         "pos_tags",
         "sentence_word_tags",
         "chunks",
+        "mwe",
     )
 
     def __getitem__(self, key: str) -> Any:
@@ -81,6 +84,19 @@ class Document:
                     "features": dict(c.features),
                 }
                 for c in self.chunks
+            ],
+            "mwe": [
+                {
+                    "text": m.text,
+                    "tokens": list(m.tokens),
+                    "category": m.category,
+                    "start": m.start,
+                    "end": m.end,
+                    "priority": m.priority,
+                    "pos": m.resolved_pos(),
+                    "index": m.index,
+                }
+                for m in self.mwe
             ],
         }
 

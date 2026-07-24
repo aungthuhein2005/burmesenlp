@@ -1,0 +1,8 @@
+/* BurmeseNLP docs — light site tweaks */
+.md-typeset code {
+  font-variant-ligatures: none;
+}
+
+.md-typeset .language-python {
+  line-height: 1.45;
+}

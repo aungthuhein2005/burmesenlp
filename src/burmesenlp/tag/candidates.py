@@ -33,27 +33,34 @@ def lookup_candidates(word: str, lexicon: Lexicon) -> Set[str]:
     if word.isdigit():
         return {"NUM"}
 
-    tags = lexicon.tags(word)
+    tags = set(lexicon.tags(word) or [])
+
+    # Closed-class augmentations always apply (even when the lexicon
+    # already lists a default tag).  သည် / တယ် are both subject markers
+    # (POSTP) and sentence-final particles (SFP) depending on context.
+    if word in grammar.FINAL_PARTICLES or word in grammar.FINITE_VERB_PARTICLES:
+        tags.update({"SFP", "PART"})
+    if word in ("သည်", "တယ်"):
+        tags.add("POSTP")
+    if word in grammar.PPM_MARKERS:
+        tags.add("POSTP")
+    if word in grammar.CONJUNCTIONS:
+        tags.add("CONJ")
+    if word in grammar.VERB_AUXILIARIES:
+        tags.add("AUX")
+    if word in grammar.VERB_SUFFIXES or word == grammar.NEGATION_PARTICLE:
+        tags.add("PART")
+    if word in ("နှင့်", "နဲ့"):
+        tags.update({"POSTP", "CONJ"})
+
     if tags:
-        return set(tags)
+        return tags
 
     out: Set[str] = set()
     if not _is_myanmar_word(word):
         return {"FW"}
     if word in grammar.NUMERAL_WORDS or _is_numeral_classifier(word):
         out.add("NUM")
-    if word in grammar.PPM_MARKERS:
-        out.add("POSTP")
-    if word in grammar.CONJUNCTIONS:
-        out.add("CONJ")
-    if word in grammar.FINAL_PARTICLES or word in grammar.FINITE_VERB_PARTICLES:
-        out.add("SFP")
-    if word in grammar.VERB_AUXILIARIES:
-        out.add("AUX")
-    if word in grammar.VERB_SUFFIXES or word == grammar.NEGATION_PARTICLE:
-        out.add("PART")
-    if word in ("နှင့်", "နဲ့"):
-        out.update({"POSTP", "CONJ"})
 
     best_len = 0
     for suffix in grammar.NOUN_SUFFIXES:

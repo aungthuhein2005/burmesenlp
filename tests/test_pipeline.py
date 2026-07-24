@@ -16,7 +16,7 @@ def test_process_outputs_are_mutually_consistent(nlp):
 
     assert set(result) == {
         "raw_text", "syllables", "words", "sentences",
-        "pos_tags", "sentence_word_tags", "chunks",
+        "pos_tags", "sentence_word_tags", "chunks", "mwe",
     }
     # Per-sentence tags must partition the global tag list exactly.
     flattened = [pair for sent in result["sentence_word_tags"] for pair in sent]

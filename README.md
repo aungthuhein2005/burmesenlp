@@ -3,14 +3,14 @@
 **BurmeseNLP** (`burmesenlp`) is an open-source Python library for rule-based
 Myanmar (Burmese) natural language processing.
 
-Version **1.0** focuses on production-ready preprocessing: normalization,
-Zawgyi ↔ Unicode conversion, syllable / word / sentence segmentation, lexicon
-management, and rule-based part-of-speech tagging. It is fast, dependency-light,
-and designed as the foundation for future hybrid and machine-learning engines.
+Version **1.0** focuses on preprocessing: normalization, Zawgyi ↔ Unicode conversion, syllable / word / sentence segmentation, lexicon management, and rule-based part-of-speech tagging. It is fast, dependency-light, and designed as the foundation for future hybrid and machine-learning engines.
 
 ```bash
 pip install burmesenlp
 ```
+
+**Docs:** [https://aungthuhein2005.github.io/burmesenlp/](https://aungthuhein2005.github.io/burmesenlp/)
+(source in [`docs/`](docs/); build with `pip install -e ".[docs]" && mkdocs serve`)
 
 ```python
 from burmesenlp import process
@@ -28,11 +28,15 @@ No dictionary path or model download is required.
 - **Zawgyi ↔ Unicode** — conversion rules plus a heuristic detector
 - **Syllable tokenization** — sylbreak-style boundaries
 - **Word segmentation** — dictionary longest-match (`engine="longest"`)
-- **Sentence segmentation** — `။` and strong final particles
+- **Sentence segmentation** — grammar-aware (after POS + phrase chunks)
+- **Multi-word expressions** — BMWE trie merge (idioms)
 - **Lexicon** — bundled tagged vocabulary (~24k entries) + mergeable custom JSON/txt
 - **POS tagging** — rule / lexicon-based (`engine="rule"`)
+- **Phrase chunking** — YAML-driven NP / VP / PP / …
 - **Pipeline API** — `process(text)` and stateful `BurmeseNLP`
 - **CLI** — `burmesenlp` console script
+
+
 
 ## Installation
 
@@ -77,6 +81,8 @@ pos_tag(["ကျွန်တော်", "ကျောင်း"], engine="rule")
 zg2uni("ျမန္မာစာေပ")
 ```
 
+
+
 ### Custom dictionary
 
 `BurmeseNLP()` loads bundled `lexicon/data/*.json` merged with closed-class
@@ -91,7 +97,7 @@ nlp.save_dictionary("my_dict.json")               # atomic JSON write
 
 **Canonical JSON:** `{ "word": ["tag1", "tag2"] }`
 
-**Import `.txt`:** `word<TAB>tag1,tag2`
+**Import** `.txt`**:** `word<TAB>tag1,tag2`
 
 Tags must be from `burmesenlp.POS_TAGS`. To load a file *instead of* the
 bundled default, use `BurmeseNLP(lexicon=Lexicon.from_file(path))`.
@@ -104,22 +110,29 @@ burmesenlp --json --mode process "စာပေကိုဖတ်သည်။"
 burmesenlp --mode zg2uni "ျမန္မာစာေပ"
 ```
 
+
+
 ## Module overview
 
-| Module | Role |
-| --- | --- |
-| `pipeline` | `BurmeseNLP`, `process()` |
-| `normalize` | NFC / zero-width / Zawgyi heuristic |
-| `zawgyi` | `uni2zg` / `zg2uni` / `to_unicode` |
-| `tokenize` | syllable, word (`longest`), sentence |
-| `tag` | rule-based POS |
-| `lexicon` | dictionary load / merge / save |
-| `grammar` | closed-class lists |
-| `cli` | console entry point |
 
-See [STRUCTURE.md](STRUCTURE.md) for the full layout. Packages such as
-`corpus/` and `models/` exist as scaffolds for later versions and are
-**not** used by the V1 pipeline.
+| Module      | Role                                 |
+| ----------- | ------------------------------------ |
+| `pipeline`  | `BurmeseNLP`, `process()`, `Document` |
+| `normalize` | NFC / zero-width / Zawgyi heuristic  |
+| `zawgyi`    | `uni2zg` / `zg2uni` / `to_unicode`   |
+| `tokenize`  | syllable, word (`longest`), sentences |
+| `mwe`       | BMWE multi-word expression merge     |
+| `tag`       | rule-based POS                       |
+| `chunking`  | phrase chunks (YAML grammar)         |
+| `lexicon`   | dictionary load / merge / save       |
+| `grammar`   | closed-class lists                   |
+| `cli`       | console entry point                  |
+
+
+See [STRUCTURE.md](STRUCTURE.md) for the full layout and the
+[documentation site](https://aungthuhein2005.github.io/burmesenlp/) for guides
+and API reference. Corpus trees under `corpus/` hold V1 grammar/idioms plus
+scaffolds for later versions.
 
 ## Current limitations
 
@@ -129,20 +142,24 @@ Version 1 is **rule-based only**:
 - No SentencePiece / BPE / EvoPiece tokenizers
 - No NER, sentiment, or spell checking
 - Word segmentation quality depends on lexicon coverage; longest-match may
-  prefer compounds present in the dictionary
+prefer compounds present in the dictionary
 - Zawgyi *detection* is heuristic — prefer explicit `zg2uni` when encoding
-  is known
+is known
 
 These gaps are intentional for a lightweight, deterministic V1.
 
 ## Roadmap
 
-| Version | Focus |
-| --- | --- |
-| **1.x** | Rule-based production toolkit (this release) |
+
+| Version | Focus                                                         |
+| ------- | ------------------------------------------------------------- |
+| **1.x** | Rule-based production toolkit (this release)                  |
 | **2.x** | Hybrid NLP (rules + statistical models) via engine registries |
-| **3.x** | Deep learning backends |
-| **4.x** | Research platform (e.g. EvoPiece, benchmarks) |
+| **3.x** | Deep learning backends                                        |
+| **4.x** | Research platform (e.g. EvoPiece, benchmarks)                 |
+
+
+
 
 ## Contributing
 
@@ -158,3 +175,4 @@ MIT — see [LICENSE](LICENSE).
 
 - Ye Kyaw Thu et al., myPOS / sylbreak conventions for Myanmar NLP
 - Rabbit Converter–style Zawgyi ↔ Unicode rule tables
+

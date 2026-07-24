@@ -3,6 +3,7 @@
 Public API (stable surface — use these from application code):
     BurmeseNLP / process / Document -- full pipeline facade
     Lexicon / LexiconError / POS_TAGS
+    BMWEEngine / MWEEntry / MWEToken
     normalize / looks_like_zawgyi
     uni2zg / zg2uni / to_unicode / is_zawgyi
     word_tokenize / syllable_tokenize / sentence_tokenize / pos_tag
@@ -12,6 +13,7 @@ Public API (stable surface — use these from application code):
 
 from .chunking import Chunk, ChunkType, chunk, chunk_from_tokens
 from .lexicon import POS_TAGS, Lexicon, LexiconError
+from .mwe import BMWEEngine, MWEEntry, MWEToken
 from .normalize import looks_like_zawgyi, normalize
 from .pipeline import BurmeseNLP, process
 from .pipeline.document import Document
@@ -29,6 +31,9 @@ __all__ = [
     "Lexicon",
     "LexiconError",
     "POS_TAGS",
+    "BMWEEngine",
+    "MWEEntry",
+    "MWEToken",
     "normalize",
     "looks_like_zawgyi",
     "is_zawgyi",

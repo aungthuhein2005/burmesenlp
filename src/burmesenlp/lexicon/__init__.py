@@ -45,6 +45,7 @@ POS_TAGS: Dict[str, str] = {
     "ABB": "abbreviation",
     "FW": "foreign word",
     "SB": "symbol",
+    "IDIOM": "multi-word idiom / fixed expression (BMWE)",
     "UNK": "unknown",
 }
 
@@ -53,7 +54,7 @@ POS_TAGS: Dict[str, str] = {
 # words before content words).
 TAG_PREFERENCE: Tuple[str, ...] = (
     "PUNCT", "SB", "POSTP", "SFP", "PART", "AUX", "CONJ", "PRON", "NUM",
-    "ADV", "ADJ", "VERB", "NOUN", "ABB", "INTJ", "FW", "UNK",
+    "ADV", "ADJ", "VERB", "NOUN", "ABB", "INTJ", "FW", "IDIOM", "UNK",
 )
 
 

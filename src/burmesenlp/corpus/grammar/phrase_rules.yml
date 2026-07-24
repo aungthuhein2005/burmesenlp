@@ -7,6 +7,15 @@ version: 1
 phrases:
 
   # =========================
+  # BMWE idioms (fixed expressions)
+  # =========================
+  - name: FIXED_EXPRESSION
+    type: FIXED_EXPRESSION
+    priority: 250
+    patterns:
+      - ["IDIOM"]
+
+  # =========================
   # Verb Phrase (VP) — high priority
   # =========================
   - name: VERB_PHRASE

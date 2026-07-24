@@ -3,13 +3,27 @@
 ```
 burmesenlp/
 ├── pyproject.toml
+├── mkdocs.yml                   # Documentation site (MkDocs Material)
 ├── README.md
 ├── STRUCTURE.md
 ├── LICENSE
 ├── CHANGELOG.md
 ├── CONTRIBUTING.md
 ├── CODE_OF_CONDUCT.md
-├── .github/workflows/ci.yml
+├── .github/workflows/
+│   ├── ci.yml
+│   └── docs.yml                 # Build + deploy GitHub Pages
+│
+├── docs/                        # Documentation source
+│   ├── index.md
+│   ├── getting-started/
+│   ├── user-guide/
+│   ├── algorithms/
+│   ├── tutorials/
+│   ├── api/
+│   ├── developer-guide/
+│   ├── research/
+│   └── assets/
 │
 ├── src/
 │   └── burmesenlp/
@@ -46,8 +60,18 @@ burmesenlp/
 │       │   ├── noun.py / verb.py / clause.py
 │       │   └── __init__.py
 │       │
+│       ├── mwe/                     # BMWE multi-word expression merge
+│       │   ├── models.py            # MWEEntry, MWEToken
+│       │   ├── trie.py              # Token-sequence trie
+│       │   ├── loader.py            # JSON/TXT → same word tokenizer as pipeline
+│       │   ├── matcher.py           # Priority / longest choose
+│       │   ├── validator.py         # V1 AcceptAllValidator
+│       │   ├── engine.py            # BMWEEngine
+│       │   └── __init__.py
+│       │
 │       ├── models/                  # v2+ model hooks (stubs only)
 │       ├── corpus/
+│       │   ├── idioms/              # idioms.json (+ idioms.cache.json)
 │       │   └── grammar/             # V1 chunking YAML
 │       │       ├── phrase_rules.yml
 │       │       ├── phrase_markers.yml
@@ -66,7 +90,7 @@ burmesenlp/
 
 | Version | Focus | Where it plugs in |
 | --- | --- | --- |
-| v1 (now) | Rule-based | `tokenize` (`longest`), `tag` (`rule`), `chunking` (YAML) |
+| v1 (now) | Rule-based | `tokenize` (`longest`), `mwe` (BMWE), `tag` (`rule`), `chunking` (YAML) |
 | v2 | Hybrid + statistical | New engines in `tokenize.engine` / `tag.engine`; artifacts via `models/` |
 | v3 | Deep learning | Transformer backends registered the same way |
 | v4 | Research / EvoPiece | Tokenizer engine + benchmark tooling |
@@ -78,17 +102,19 @@ raw text
   → normalize
   → tokenize.syllable
   → tokenize.word (engine="longest")
-  → tokenize.sentence
-  → tag (engine="rule")
+  → mwe (BMWEEngine: trie merge; loader uses the same word tokenizer)
+  → tag (engine="rule") on merged words
        1. candidates.py
        2. context rules
        3. grammar rules
        4. TAG_PREFERENCE fallback
   → chunking (YAML patterns: NP / VP / PP / CLAUSE)
-  → Document (words, pos_tags, chunks, …)
+  → sentence segmentation (grammar-aware over phrase chunks)
+  → Document (words post-MWE, mwe spans, pos_tags, chunks, sentences, …)
 ```
 
 `process(text)` and `BurmeseNLP.process` run this once with shared word tokens.
 
-V1 loads `corpus/grammar/*.yaml` for phrase chunking. Other `corpus/` trees
+V1 loads `corpus/idioms/idioms.json` (via `idioms.cache.json` when fresh) for
+BMWE and `corpus/grammar/*.yml` for phrase chunking. Other `corpus/` trees
 (NER, sentiment, embeddings, …) remain placeholders for later versions.

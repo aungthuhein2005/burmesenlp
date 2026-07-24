@@ -13,10 +13,12 @@ from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 from ..chunking import PhraseChunker
 from ..chunking.models import Chunk
 from ..lexicon import Lexicon
+from ..mwe import BMWEEngine
+from ..mwe.models import MWEToken
 from ..normalize import normalize
 from ..tag.rule import POSTagger
 from ..tokenize.longest import WordSegmenter
-from ..tokenize.sentence import Sentence, SentenceSegmenter
+from ..tokenize.sentence import SentenceSegmenter, merged_char_spans
 from ..tokenize.syllable import (
     ANUSVARA,
     ASAT,
@@ -64,6 +66,7 @@ class BurmeseNLP:
         self._sentencer = SentenceSegmenter(
             split_on_final_particles=split_on_final_particles
         )
+        self._mwe = BMWEEngine(lexicon=self.lexicon)
         self._tagger = POSTagger(self.lexicon)
         self._chunker = PhraseChunker()
 
@@ -74,8 +77,18 @@ class BurmeseNLP:
     def _word_tokens(self, norm: str) -> List[Token]:
         return self._segmenter.segment(tokenize(norm))
 
-    def _sentences(self, norm: str) -> List[Sentence]:
-        return self._sentencer.segment(self._word_tokens(norm), norm)
+    def _analyze(self, norm: str):
+        """Shared path: words → BMWE → POS → chunks → grammar sentences."""
+        word_tokens = self._segmenter.segment(tokenize(norm))
+        pre_mwe = [t.text for t in word_tokens]
+        words, mwe_spans = self._mwe.process_detailed(pre_mwe)
+        pos_tags = self._tagger.tag(words, mwe=mwe_spans)
+        chunks = self._chunker.chunk(words, pos_tags)
+        char_spans = merged_char_spans(word_tokens, mwe_spans)
+        sentences = self._sentencer.segment_from_chunks(
+            words, pos_tags, chunks, norm, char_spans=char_spans
+        )
+        return word_tokens, words, mwe_spans, pos_tags, chunks, sentences
 
     # ------------------------------------------------------------------
     # Segmentation
@@ -98,9 +111,12 @@ class BurmeseNLP:
         return self._word_tokens(normalize(text))
 
     def sentence_segment(self, text: str) -> List[str]:
-        """Segment text into sentences."""
+        """Segment text into sentences (grammar-aware: POS + chunks)."""
         norm = normalize(text)
-        return [s.text for s in self._sentences(norm)]
+        if not norm:
+            return []
+        *_, sentences = self._analyze(norm)
+        return [s.text for s in sentences]
 
     def sentence_segment_with_positions(self, text: str) -> List[Tuple[str, int, int]]:
         """Sentences with (start, end) offsets into the *normalized* text.
@@ -108,15 +124,22 @@ class BurmeseNLP:
         Guaranteed: ``normalize(text)[start:end] == sentence``.
         """
         norm = normalize(text)
-        return [(s.text, s.start, s.end) for s in self._sentences(norm)]
-
+        if not norm:
+            return []
+        *_, sentences = self._analyze(norm)
+        return [(s.text, s.start, s.end) for s in sentences]
     # ------------------------------------------------------------------
     # POS tagging
     # ------------------------------------------------------------------
 
-    def pos_tag(self, words: Sequence[str]) -> List[Tuple[str, str]]:
-        """Tag an already-segmented word list."""
-        return self._tagger.tag(words)
+    def pos_tag(
+        self,
+        words: Sequence[str],
+        *,
+        mwe: Optional[Sequence[MWEToken]] = None,
+    ) -> List[Tuple[str, str]]:
+        """Tag an already-segmented word list (optionally MWE-aware)."""
+        return self._tagger.tag(words, mwe=mwe)
 
     # ------------------------------------------------------------------
     # Phrase chunking
@@ -131,9 +154,20 @@ class BurmeseNLP:
         return self._chunker.chunk(words, pos_tags)
 
     def chunk(self, text: str) -> List[Chunk]:
-        """Segment, POS-tag, then chunk *text*."""
-        words = self.word_segment(text)
-        return self.chunk_from_tokens(words, self.pos_tag(words))
+        """Segment, MWE-merge, POS-tag, then chunk *text*."""
+        pre = self.word_segment(text)
+        words, mwe_spans = self._mwe.process_detailed(pre)
+        return self.chunk_from_tokens(words, self.pos_tag(words, mwe=mwe_spans))
+
+    def load_mwe(
+        self,
+        path: str,
+        *,
+        category: Optional[str] = None,
+        priority: int = 0,
+    ) -> int:
+        """Load an additional MWE resource (JSON/TXT) into the engine."""
+        return self._mwe.load(path, category=category, priority=priority)
 
     # ------------------------------------------------------------------
     # Full pipeline
@@ -142,24 +176,30 @@ class BurmeseNLP:
     def process(self, text: str) -> Document:
         """Run the full pipeline once, with all outputs mutually consistent.
 
-        Flow: normalize → syllable tokenize → word tokenize → sentence
-        split → POS tag → phrase chunk.  Words are segmented a single time
-        and shared by the sentence splitter, tagger, and chunker.
+        Flow: normalize → syllables → words → BMWE → POS → phrase chunk
+        → grammar-aware sentence segmentation.
         """
         norm = normalize(text)
         syllable_tokens = tokenize(norm)
-        word_tokens = self._segmenter.segment(syllable_tokens)
-        words = [t.text for t in word_tokens]
-        sentences = self._sentencer.segment(word_tokens, norm)
-        pos_tags = self._tagger.tag(words)
-        chunks = self._chunker.chunk(words, pos_tags)
+        if not norm:
+            return Document(
+                raw_text=norm,
+                syllables=[],
+                words=[],
+                sentences=[],
+                pos_tags=[],
+                sentence_word_tags=[],
+                chunks=[],
+                mwe=[],
+            )
 
-        sentence_word_tags: List[List[Tuple[str, str]]] = []
-        idx = 0
-        for sent in sentences:
-            count = len(sent.words)
-            sentence_word_tags.append(pos_tags[idx : idx + count])
-            idx += count
+        _word_tokens, words, mwe_spans, pos_tags, chunks, sentences = self._analyze(
+            norm
+        )
+
+        sentence_word_tags: List[List[Tuple[str, str]]] = [
+            pos_tags[s.word_start : s.word_end] for s in sentences
+        ]
 
         return Document(
             raw_text=norm,
@@ -169,6 +209,7 @@ class BurmeseNLP:
             pos_tags=pos_tags,
             sentence_word_tags=sentence_word_tags,
             chunks=chunks,
+            mwe=mwe_spans,
         )
 
     # ------------------------------------------------------------------
@@ -253,5 +294,5 @@ class BurmeseNLP:
 
 
 def process(text: str, **kwargs) -> Document:
-    """One-shot pipeline: normalize → tokenize → sentences → POS → chunks."""
+    """One-shot pipeline: normalize → words → MWE → POS → chunks → sentences."""
     return BurmeseNLP(**kwargs).process(text)

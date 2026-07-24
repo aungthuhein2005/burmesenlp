@@ -29,6 +29,7 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://github.com/aungthuhein2005/burmesenlp"
+Documentation = "https://aungthuhein2005.github.io/burmesenlp/"
 Repository = "https://github.com/aungthuhein2005/burmesenlp"
 Issues = "https://github.com/aungthuhein2005/burmesenlp/issues"
 Changelog = "https://github.com/aungthuhein2005/burmesenlp/blob/main/CHANGELOG.md"
@@ -42,6 +43,11 @@ dev = [
     "ruff>=0.4",
     "mypy>=1.8,<2",
     "build>=1.0",
+]
+docs = [
+    "mkdocs>=1.6",
+    "mkdocs-material>=9.5",
+    "mkdocstrings[python]>=0.26",
 ]
 
 [tool.setuptools.packages.find]

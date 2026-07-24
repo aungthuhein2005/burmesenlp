@@ -46,14 +46,18 @@ def sentence_tokenize(
     split_on_final_particles: bool = True,
     engine: str = "longest",
 ) -> List[str]:
-    """Segment *text* into sentences (via word tokens from *engine*)."""
-    from .engine import run_word_engine
+    """Segment *text* into sentences via the grammar-aware pipeline.
 
-    lex = lexicon if lexicon is not None else Lexicon.default()
-    norm = normalize(text)
-    words = run_word_engine(text, engine=engine, lexicon=lex)
-    sentencer = SentenceSegmenter(split_on_final_particles=split_on_final_particles)
-    return [s.text for s in sentencer.segment(words, norm)]
+    Runs word tokenization (*engine*), BMWE, POS, and phrase chunking,
+    then splits on chunk/POS structure (not bare သည်/တယ် matching).
+    """
+    del engine  # word engine selection is owned by BurmeseNLP / longest today
+    from ..pipeline import BurmeseNLP
+
+    return BurmeseNLP(
+        lexicon=lexicon,
+        split_on_final_particles=split_on_final_particles,
+    ).sentence_segment(text)
 
 
 __all__ = [

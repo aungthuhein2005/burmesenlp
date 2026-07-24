@@ -11,6 +11,13 @@ cd burmesenlp
 python -m pip install -e ".[dev]"
 ```
 
+Documentation site (MkDocs Material):
+
+```bash
+pip install -e ".[docs]"
+mkdocs serve
+```
+
 ## Checks before opening a PR
 
 ```bash
@@ -39,6 +46,8 @@ When releasing, update **all three** together:
 2. `pyproject.toml` → `version`
 3. `CHANGELOG.md` → new section
 
+
+
 ## What belongs in V1 PRs
 
 - Bug fixes for normalize / tokenize / tag / Zawgyi / lexicon
@@ -46,13 +55,15 @@ When releasing, update **all three** together:
 - Golden / regression tests with real Burmese text
 - Lexicon quality (validated JSON/txt merges)
 
+
+
 ## What does not belong in V1 PRs
 
 Do **not** add unfinished public features for:
 
 - CRF / Transformers / embeddings
 - NER, sentiment, spell checking
-- SentencePiece / EvoPiece / new tokenization algorithms
+- SentencePiece  / new tokenization algorithms
 - Heavy ML dependencies
 
 Architecture hooks under `models/` and placeholder trees under `corpus/`
@@ -63,6 +74,8 @@ exist for later versions — do not advertise them as working V1 features.
 - Keep diffs focused; match existing style.
 - Add or update tests for behavior changes.
 - Be respectful; follow the [Code of Conduct](CODE_OF_CONDUCT.md).
+
+
 
 ## License
 

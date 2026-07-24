@@ -15,6 +15,10 @@ Production NLP uses:
   - `phrase_rules.yml` — NP / VP / PP / ADJP / NUMP / CLAUSE patterns
   - `phrase_markers.yml` — boundary markers (case, SFP, conjunctions)
   - `phrase_exceptions.yml` — fixed expressions / never-split / specials
+- `burmesenlp.corpus.idioms` — BMWE idiom list:
+  - `idioms.json` — human-editable string list
+  - `idioms.cache.json` — auto-generated tokenized cache (same word
+    tokenizer as the pipeline; rebuilt when source or lexicon changes)
 
 Directories such as `ner/`, `sentiment/`, `spell/`, `embeddings/`,
 `tokenizer/`, and empty stub files under `names/` / `pos/` are
