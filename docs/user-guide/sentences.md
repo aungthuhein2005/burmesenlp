@@ -1,7 +1,9 @@
 # Sentence segmentation
 
 Sentences are split **after** POS and phrase chunking — not by matching
-`သည်` / `တယ်` alone.
+`သည်` / `တယ်` alone. `ClauseParser` then builds nested
+`Sentence → Clause → Phrase` trees inside each sentence
+(`doc.sentence_trees`).
 
 ```python
 from burmesenlp import BurmeseNLP, sentence_tokenize

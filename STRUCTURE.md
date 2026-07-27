@@ -14,6 +14,10 @@ burmesenlp/
 │   ├── ci.yml
 │   └── docs.yml                 # Build + deploy GitHub Pages
 │
+├── benchmarks/                  # Manual speed smoke (not CI)
+│   ├── README.md
+│   └── speed_smoke.py
+│
 ├── docs/                        # Documentation source
 │   ├── index.md
 │   ├── getting-started/
@@ -61,17 +65,13 @@ burmesenlp/
 │       │   └── __init__.py
 │       │
 │       ├── mwe/                     # BMWE multi-word expression merge
-│       │   ├── models.py            # MWEEntry, MWEToken
-│       │   ├── trie.py              # Token-sequence trie
-│       │   ├── loader.py            # JSON/TXT → same word tokenizer as pipeline
-│       │   ├── matcher.py           # Priority / longest choose
-│       │   ├── validator.py         # V1 AcceptAllValidator
-│       │   ├── engine.py            # BMWEEngine
-│       │   └── __init__.py
+│       ├── gazetteer/               # GazetteerManager + EntityType
+│       ├── structures/              # Shared TokenTrie
 │       │
 │       ├── models/                  # v2+ model hooks (stubs only)
 │       ├── corpus/
 │       │   ├── idioms/              # idioms.json (+ idioms.cache.json)
+│       │   ├── gazetteers/          # entity string lists + holidays
 │       │   └── grammar/             # V1 chunking YAML
 │       │       ├── phrase_rules.yml
 │       │       ├── phrase_markers.yml
@@ -104,17 +104,27 @@ raw text
   → tokenize.word (engine="longest")
   → mwe (BMWEEngine: trie merge; loader uses the same word tokenizer)
   → tag (engine="rule") on merged words
-       1. candidates.py
-       2. context rules
-       3. grammar rules
-       4. TAG_PREFERENCE fallback
-  → chunking (YAML patterns: NP / VP / PP / CLAUSE)
+  → gazetteer NER (GazetteerManager.find_all on post-BMWE words)
+       → Document.entities (PERSON / TOWN / … + attributes)
+       → phrase chunker locks those spans as NP (features.entity)
+  → phrase chunking (YAML: NP / VP / PP / … on remaining tokens)
   → sentence segmentation (grammar-aware over phrase chunks)
-  → Document (words post-MWE, mwe spans, pos_tags, chunks, sentences, …)
+  → ClauseParser (phrase patterns + markers → SyntaxSentence trees;
+     RELATIVE nests inside NP; PP default semantic roles from YAML)
+  → Document (words, pos_tags, entities, chunks, sentence_trees, clauses, …)
+```
+
+Linguistic hierarchy:
+
+```
+Document
+  ├── entities          # semantic (gazetteer)
+  ├── chunks            # syntactic phrases
+  └── sentence_trees / clauses
 ```
 
 `process(text)` and `BurmeseNLP.process` run this once with shared word tokens.
 
 V1 loads `corpus/idioms/idioms.json` (via `idioms.cache.json` when fresh) for
-BMWE and `corpus/grammar/*.yml` for phrase chunking. Other `corpus/` trees
-(NER, sentiment, embeddings, …) remain placeholders for later versions.
+BMWE and `corpus/grammar/*.yml` for phrase / clause chunking. Other `corpus/`
+trees (NER, sentiment, embeddings, …) remain placeholders for later versions.

@@ -8,7 +8,7 @@ from burmesenlp.normalize import normalize
 
 @pytest.fixture(scope="module")
 def nlp():
-    return BurmeseNLP()
+    return BurmeseNLP(gazetteer=False)
 
 
 def _stripped(sents):
@@ -129,7 +129,32 @@ def test_empty_input(nlp):
 
 
 def test_process_sentence_word_tags_partition(nlp):
-    doc = process("မင်္ဂလာပါ။ ကျွန်တော်တို့သည် မြန်မာဘာသာစကားကို လေ့လာနေကြသည်။")
+    doc = process("မင်္ဂလာပါ။ ကျွန်တော်တို့သည် မြန်မာဘာသာစကားကို လေ့လာနေကြသည်။", gazetteer=False)
     flat = [p for sent in doc.sentence_word_tags for p in sent]
     assert flat == doc.pos_tags
     assert len(doc.sentences) == 2
+
+
+def test_politeness_particle_does_not_orphan_fragment(nlp):
+    """ပါတယ်/ပါဘူး must stay with the predicate through ။ (not a fake NP onset)."""
+    for text in (
+        "ကျွန်တော်သွားခဲ့ပါတယ်။",
+        "မလုပ်ပါဘူး။",
+        "ရှိပါတယ်။",
+    ):
+        sents = _stripped(nlp.sentence_segment(text))
+        assert len(sents) == 1, (text, sents)
+        assert sents[0].endswith("။")
+
+
+def test_soft_split_still_works_after_finite_sfp(nlp):
+    text = "စာဖတ်တယ်သူအိပ်တယ်"
+    sents = _stripped(nlp.sentence_segment(text))
+    assert len(sents) == 2
+    assert "ဖတ်" in sents[0] and sents[0].endswith("တယ်")
+    assert "အိပ်" in sents[1]
+
+
+def test_contrast_connector_keeps_one_sentence(nlp):
+    text = "သူသွားပြီပေမဲ့သူမလာဘူး။"
+    assert len(_stripped(nlp.sentence_segment(text))) == 1

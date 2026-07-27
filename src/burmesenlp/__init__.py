@@ -4,6 +4,7 @@ Public API (stable surface — use these from application code):
     BurmeseNLP / process / Document -- full pipeline facade
     Lexicon / LexiconError / POS_TAGS
     BMWEEngine / MWEEntry / MWEToken
+    GazetteerManager / EntityType / GazetteerHit
     normalize / looks_like_zawgyi
     uni2zg / zg2uni / to_unicode / is_zawgyi
     word_tokenize / syllable_tokenize / sentence_tokenize / pos_tag
@@ -11,7 +12,8 @@ Public API (stable surface — use these from application code):
     syllable_segment / Token
 """
 
-from .chunking import Chunk, ChunkType, chunk, chunk_from_tokens
+from .chunking import Chunk, ChunkType, Clause, ClauseParser, ClauseType, Phrase, SyntaxSentence, chunk, chunk_from_tokens
+from .gazetteer import EntityType, GazetteerHit, GazetteerManager
 from .lexicon import POS_TAGS, Lexicon, LexiconError
 from .mwe import BMWEEngine, MWEEntry, MWEToken
 from .normalize import looks_like_zawgyi, normalize
@@ -34,6 +36,9 @@ __all__ = [
     "BMWEEngine",
     "MWEEntry",
     "MWEToken",
+    "GazetteerManager",
+    "GazetteerHit",
+    "EntityType",
     "normalize",
     "looks_like_zawgyi",
     "is_zawgyi",
@@ -48,6 +53,11 @@ __all__ = [
     "chunk_from_tokens",
     "Chunk",
     "ChunkType",
+    "Clause",
+    "ClauseParser",
+    "ClauseType",
+    "Phrase",
+    "SyntaxSentence",
     "syllable_segment",
     "Token",
     "__version__",

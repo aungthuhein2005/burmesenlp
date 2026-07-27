@@ -7,14 +7,14 @@ name = "burmesenlp"
 version = "1.0.0"
 description = "Production-oriented Myanmar (Burmese) NLP preprocessing: syllable, word and sentence segmentation, rule-based POS tagging, and phrase chunking."
 readme = "README.md"
-license = { text = "MIT" }
+license = { text = "Apache-2.0" }
 requires-python = ">=3.9"
 authors = [{ name = "BurmeseNLP contributors" }]
 keywords = ["myanmar", "burmese", "nlp", "segmentation", "pos-tagging", "chunking"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: Apache Software License",
     "Natural Language :: Burmese",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",

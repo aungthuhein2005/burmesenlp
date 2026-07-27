@@ -11,14 +11,21 @@ looks_like_zawgyi("ျမန္မာ")  # heuristic only
 
 All pipeline offsets refer to the **normalized** string.
 
+!!! important
+    `process()` / `BurmeseNLP.process()` call **`normalize()` only**.
+    They do **not** auto-convert Zawgyi to Unicode. Convert first when needed.
+
 ## Zawgyi ↔ Unicode
 
 ```python
-from burmesenlp import zg2uni, uni2zg, to_unicode, is_zawgyi
+from burmesenlp import zg2uni, uni2zg, to_unicode, is_zawgyi, process
 
-zg2uni("ျမန္မာစာေပ")
-uni2zg("မြန်မာစာပေ")
-to_unicode(text)   # convert if heuristic says Zawgyi
+# Opt-in conversion before the pipeline
+uni = zg2uni(zawgyi_text)       # when encoding is known
+# or:
+uni = to_unicode(maybe_zg)      # convert if heuristic says Zawgyi
+
+doc = process(uni)
 ```
 
 !!! warning

@@ -15,9 +15,15 @@ from .matcher import (
 from .models import (
     ChunkRule,
     ChunkType,
+    ClauseKindRules,
+    ClauseRules,
+    ClauseSettings,
+    ClauseType,
     GrammarError,
     PhraseExceptions,
     PhraseMarkers,
+    PostpositionRole,
+    PostpositionRoles,
 )
 
 try:
@@ -42,6 +48,10 @@ _TYPE_MAP = {
     "NUMP": ChunkType.NUMERAL_PHRASE,
     "NUMERAL_PHRASE": ChunkType.NUMERAL_PHRASE,
     "CLAUSE": ChunkType.CLAUSE,
+    "MAIN_CLAUSE": ChunkType.MAIN_CLAUSE,
+    "SUBORDINATE_CLAUSE": ChunkType.SUBORDINATE_CLAUSE,
+    "RELATIVE_CLAUSE": ChunkType.RELATIVE_CLAUSE,
+    "CONDITIONAL_CLAUSE": ChunkType.CONDITIONAL_CLAUSE,
     "GREETING": ChunkType.GREETING,
     "FIXED_EXPRESSION": ChunkType.FIXED_EXPRESSION,
     "FIXED_VERB": ChunkType.FIXED_VERB,
@@ -95,6 +105,202 @@ def _flatten_marker_groups(raw: object, source: str) -> Dict[str, Tuple[str, ...
             raise GrammarError(f"{source}: markers[{key!r}] must be a list of strings")
         out[str(key)] = tuple(vals)
     return out
+
+
+_CLAUSE_KIND_MAP = {
+    "main": ClauseType.MAIN,
+    "conditional": ClauseType.CONDITIONAL,
+    "reason": ClauseType.REASON,
+    "purpose": ClauseType.PURPOSE,
+    "relative": ClauseType.RELATIVE,
+    "contrast": ClauseType.CONTRAST,
+}
+
+
+def _parse_phrase_patterns(raw: object, source: str) -> Tuple[Tuple[str, ...], ...]:
+    if raw is None:
+        return ()
+    if not isinstance(raw, list):
+        raise GrammarError(f"{source}: phrase_patterns must be a list")
+    out: List[Tuple[str, ...]] = []
+    for entry in raw:
+        if not isinstance(entry, list) or not all(isinstance(x, str) for x in entry):
+            raise GrammarError(
+                f"{source}: each phrase_pattern must be a list of strings"
+            )
+        # Keep quantified atoms like (NP|PP)+ as written (upper-case labels only).
+        normed: List[str] = []
+        for x in entry:
+            s = x.strip()
+            if not s:
+                continue
+            # Upper-case bare labels; leave operator atoms intact.
+            if s[0] in "([":
+                normed.append(s)
+            else:
+                normed.append(s.upper())
+        out.append(tuple(normed))
+    return tuple(out)
+
+
+def _parse_str_list(raw: object, source: str) -> Tuple[str, ...]:
+    if raw is None:
+        return ()
+    if not isinstance(raw, list) or not all(isinstance(v, str) for v in raw):
+        raise GrammarError(f"{source} must be a list of strings")
+    return tuple(dict.fromkeys(v.strip() for v in raw if v.strip()))
+
+
+def _parse_clause_settings(raw: object, source: str) -> ClauseSettings:
+    if raw is None:
+        return ClauseSettings()
+    if not isinstance(raw, dict):
+        raise GrammarError(f"{source}: settings must be a mapping")
+    return ClauseSettings(
+        require_final_vp=bool(raw.get("require_final_vp", True)),
+        allow_nested_relative=bool(raw.get("allow_nested_relative", True)),
+        merge_consecutive_pp=bool(raw.get("merge_consecutive_pp", False)),
+        prefer_longest_match=bool(raw.get("prefer_longest_match", True)),
+        allow_empty_np=bool(raw.get("allow_empty_np", False)),
+    )
+
+
+def load_clause_rules(path: Optional[Path] = None) -> ClauseRules:
+    """Load phrase-pattern + marker clause grammar from ``clause_rules.yml``.
+
+    Supports the V1 template schema::
+
+        settings: …
+        patterns: { basic_clause: [...], relative_clause: [...] }
+        clauses: { conditional: { inherit, relation, markers, … } }
+
+    Legacy top-level keys (``conditional:``, ``main:``, …) are still accepted.
+    """
+    p = path or (_GRAMMAR_DIR / "clause_rules.yml")
+    data = _load_yaml(p)
+    settings = _parse_clause_settings(data.get("settings"), f"{p.name}:settings")
+
+    templates: Dict[str, Tuple[Tuple[str, ...], ...]] = {}
+    raw_patterns = data.get("patterns") or {}
+    if raw_patterns and not isinstance(raw_patterns, dict):
+        raise GrammarError(f"{p.name}: patterns must be a mapping")
+    if isinstance(raw_patterns, dict):
+        for tname, tlist in raw_patterns.items():
+            templates[str(tname)] = _parse_phrase_patterns(
+                tlist, f"{p.name}:patterns.{tname}"
+            )
+
+    # Prefer nested ``clauses:``; fall back to legacy top-level kind keys.
+    raw_clauses = data.get("clauses")
+    if raw_clauses is None:
+        raw_clauses = {
+            name: data[name] for name in _CLAUSE_KIND_MAP if name in data
+        }
+    if not isinstance(raw_clauses, dict):
+        raise GrammarError(f"{p.name}: clauses must be a mapping")
+
+    kinds: Dict[str, ClauseKindRules] = {}
+    marker_pairs: List[Tuple[str, str]] = []
+
+    for name, ctype in _CLAUSE_KIND_MAP.items():
+        raw = raw_clauses.get(name)
+        if raw is None:
+            continue
+        if not isinstance(raw, dict):
+            raise GrammarError(f"{p.name}: {name} must be a mapping")
+
+        inherit = str(raw.get("inherit") or "").strip()
+        markers = _parse_str_list(raw.get("markers"), f"{p.name}:{name}.markers")
+        end_markers = _parse_str_list(
+            raw.get("end_markers"), f"{p.name}:{name}.end_markers"
+        )
+        # Explicit phrase_patterns override inherit (legacy / overrides).
+        if "phrase_patterns" in raw and raw.get("phrase_patterns") is not None:
+            patterns = _parse_phrase_patterns(
+                raw.get("phrase_patterns"), f"{p.name}:{name}.phrase_patterns"
+            )
+        elif inherit:
+            if inherit not in templates:
+                raise GrammarError(
+                    f"{p.name}: {name} inherit {inherit!r} not in patterns"
+                )
+            patterns = templates[inherit]
+        else:
+            patterns = ()
+
+        relation = str(raw.get("relation") or "").strip()
+        precedence = int(raw.get("precedence") or 0)
+        nesting = bool(raw.get("nesting", False))
+
+        kinds[name] = ClauseKindRules(
+            name=name,
+            clause_type=ctype,
+            markers=markers,
+            phrase_patterns=patterns,
+            end_markers=end_markers,
+            relation=relation,
+            precedence=precedence,
+            nesting=nesting,
+            inherit=inherit,
+        )
+        for m in markers:
+            marker_pairs.append((m, name))
+
+    # Longest marker first (သော်လည်း before သော်, လျှင်မူ before လျှင်)
+    marker_pairs.sort(key=lambda x: len(x[0]), reverse=True)
+    return ClauseRules(
+        kinds=kinds,
+        markers_longest=tuple(marker_pairs),
+        settings=settings,
+        pattern_templates=templates,
+    )
+
+
+def load_postposition_roles(path: Optional[Path] = None) -> PostpositionRoles:
+    """Load PP semantic-role heuristics.
+
+    Prefers ``semantic_roles.yml`` (``POSTP:`` map); falls back to legacy
+    ``postposition_roles.yml`` (``postpositions:`` map).
+    """
+    if path is not None:
+        return _load_role_file(Path(path))
+    primary = _GRAMMAR_DIR / "semantic_roles.yml"
+    legacy = _GRAMMAR_DIR / "postposition_roles.yml"
+    if primary.is_file():
+        return _load_role_file(primary)
+    return _load_role_file(legacy)
+
+
+def _load_role_file(p: Path) -> PostpositionRoles:
+    data = _load_yaml(p)
+    # New schema: POSTP: { ကို: { default: OBJECT, … } }
+    raw = data.get("POSTP")
+    if raw is None:
+        raw = data.get("postpositions") or {}
+    if not isinstance(raw, dict):
+        raise GrammarError(f"{p.name}: POSTP/postpositions must be a mapping")
+    by_text: Dict[str, PostpositionRole] = {}
+    for text, entry in raw.items():
+        if not isinstance(entry, dict):
+            raise GrammarError(f"{p.name}: postposition {text!r} must be a mapping")
+        default_role = str(
+            entry.get("default") or entry.get("default_role") or ""
+        ).strip()
+        gram = str(entry.get("grammatical_function") or "ADJUNCT").strip()
+        possible = entry.get("possible") or entry.get("possible_roles") or []
+        if not default_role:
+            raise GrammarError(f"{p.name}: {text!r} needs default / default_role")
+        if not isinstance(possible, list) or not all(isinstance(x, str) for x in possible):
+            raise GrammarError(
+                f"{p.name}: {text!r} possible/possible_roles must be a string list"
+            )
+        by_text[str(text)] = PostpositionRole(
+            text=str(text),
+            default_role=default_role,
+            grammatical_function=gram,
+            possible_roles=tuple(possible),
+        )
+    return PostpositionRoles(by_text=by_text)
 
 
 def load_markers(path: Optional[Path] = None) -> PhraseMarkers:
@@ -262,7 +468,7 @@ def build_phrase_pattern_map(rules: List[ChunkRule]) -> Dict[str, str]:
 
 
 class CompiledGrammar:
-    """Compiled pattern rules + markers + exceptions."""
+    """Compiled pattern rules + markers + exceptions + clause / role grammars."""
 
     def __init__(
         self,
@@ -270,11 +476,15 @@ class CompiledGrammar:
         markers: PhraseMarkers,
         exceptions: PhraseExceptions,
         aliases: Mapping[str, FrozenSet[str]],
+        clause_rules: Optional[ClauseRules] = None,
+        postposition_roles: Optional[PostpositionRoles] = None,
     ):
         self.pattern_rules = pattern_rules
         self.markers = markers
         self.exceptions = exceptions
         self.aliases = aliases
+        self.clause_rules = clause_rules or ClauseRules({}, ())
+        self.postposition_roles = postposition_roles or PostpositionRoles({})
         # Back-compat for older chunker code expecting split_rules
         self.split_rules: List[ChunkRule] = []
 
@@ -284,7 +494,24 @@ class CompiledGrammar:
         rules = load_phrase_rules(d / "phrase_rules.yml")
         markers = load_markers(d / "phrase_markers.yml")
         exceptions = load_exceptions(d / "phrase_exceptions.yml")
-        return cls.from_parts(rules, markers, exceptions, load_aliases())
+        clause_path = d / "clause_rules.yml"
+        clause_rules = (
+            load_clause_rules(clause_path) if clause_path.is_file() else ClauseRules({}, ())
+        )
+        roles_path = d / "postposition_roles.yml"
+        roles = (
+            load_postposition_roles(roles_path)
+            if roles_path.is_file()
+            else PostpositionRoles({})
+        )
+        return cls.from_parts(
+            rules,
+            markers,
+            exceptions,
+            load_aliases(),
+            clause_rules=clause_rules,
+            postposition_roles=roles,
+        )
 
     @classmethod
     def from_parts(
@@ -293,6 +520,8 @@ class CompiledGrammar:
         markers: PhraseMarkers,
         exceptions: PhraseExceptions,
         aliases: Optional[Mapping[str, FrozenSet[str]]] = None,
+        clause_rules: Optional[ClauseRules] = None,
+        postposition_roles: Optional[PostpositionRoles] = None,
     ) -> "CompiledGrammar":
         aliases = dict(aliases or load_aliases())
         phrase_map = build_phrase_pattern_map(rules)
@@ -310,7 +539,14 @@ class CompiledGrammar:
                 ) from exc
             pattern_rules.append((rule, compiled))
         pattern_rules.sort(key=lambda x: x[0].priority, reverse=True)
-        return cls(pattern_rules, markers, exceptions, aliases)
+        return cls(
+            pattern_rules,
+            markers,
+            exceptions,
+            aliases,
+            clause_rules,
+            postposition_roles,
+        )
 
     @classmethod
     def from_rules(

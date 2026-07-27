@@ -1,29 +1,48 @@
-# Corpus resources (scaffold)
+# Corpus resources
 
 This package directory holds **linguistic resource files** and a small
-loader/registry API.  It is an architectural scaffold for later versions.
+loader/registry API.
 
-## Version 1 (current)
+## Production (V1) — used by the public pipeline
 
-Production NLP uses:
+| Resource | Location | Used by |
+| --- | --- | --- |
+| Tagged lexicon | `burmesenlp/lexicon/data/*.json` | word segment, POS |
+| Phrase / clause grammar | `corpus/grammar/*.yml` | phrase + typed clause chunking |
+| Idioms | `corpus/idioms/idioms.json` (+ cache) | BMWE |
+| Zawgyi rules | `burmesenlp/zawgyi/*.json` | `zg2uni` / `uni2zg` |
+| Closed-class lists | `burmesenlp/grammar` (code) | POS / sentences |
 
-- `burmesenlp.lexicon` — bundled tagged lexicon (`lexicon/data/*.json`)
-- `burmesenlp.zawgyi` — Zawgyi ↔ Unicode conversion rules
-- `burmesenlp.grammar` — closed-class lists in code
-- `burmesenlp.normalize` — NFC / zero-width handling in code
-- `burmesenlp.corpus.grammar` — phrase-chunking YAML:
-  - `phrase_rules.yml` — NP / VP / PP / ADJP / NUMP / CLAUSE patterns
-  - `phrase_markers.yml` — boundary markers (case, SFP, conjunctions)
-  - `phrase_exceptions.yml` — fixed expressions / never-split / specials
-- `burmesenlp.corpus.idioms` — BMWE idiom list:
-  - `idioms.json` — human-editable string list
-  - `idioms.cache.json` — auto-generated tokenized cache (same word
-    tokenizer as the pipeline; rebuilt when source or lexicon changes)
+## Lookup resources (V1 API, not in `process()`)
 
-Directories such as `ner/`, `sentiment/`, `spell/`, `embeddings/`,
-`tokenizer/`, and empty stub files under `names/` / `pos/` are
-**placeholders**.  They are not features of the public V1 API and should
-not be documented as working capabilities.
+| Resource | Location | Used by |
+| --- | --- | --- |
+| Gazetteers | `corpus/gazetteers/` | `GazetteerManager` |
+
+See [gazetteers/README.md](gazetteers/README.md). Load via
+`GazetteerManager()` for contains/lookup/longest_match. Entity type comes
+from the filename; data stay compact string arrays (except holidays).
+
+See [metadata/corpus.json](metadata/corpus.json) for machine-readable inventory
+(license, version, role).
+
+Idiom file format: [idioms/README.md](idioms/README.md) (JSON **string array**,
+category from path — not `{text, type}` objects).
+
+Phrase grammar:
+
+- `phrase_rules.yml` — NP / VP / PP / ADJP / NUMP / FIXED_EXPRESSION
+- `clause_rules.yml` — settings, reusable phrase templates, clause kinds (inherit / relation / markers)
+- `semantic_roles.yml` — default PP semantic roles (V1 heuristics; prefer over legacy `postposition_roles.yml`)
+- `phrase_markers.yml` — boundary markers
+- `phrase_exceptions.yml` — greetings / never-split / specials
+
+## Placeholders (not V1 features)
+
+Directories such as `ner/`, `sentiment/`, `names/`, `dictionaries/`,
+`syllables/`, and related stub files are **scaffolds for later versions**.
+They are **not** loaded by `BurmeseNLP.process()` and must not be documented
+as working V1 capabilities.
 
 ## Later versions
 

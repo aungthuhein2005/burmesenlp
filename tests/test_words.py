@@ -12,7 +12,7 @@ from burmesenlp import BurmeseNLP, Lexicon
 
 @pytest.fixture(scope="module")
 def nlp():
-    return BurmeseNLP()
+    return BurmeseNLP(gazetteer=False)
 
 
 @pytest.fixture(scope="module")
@@ -106,3 +106,10 @@ def test_word_tokens_have_valid_offsets(nlp):
 
 def test_empty_input(nlp):
     assert nlp.word_segment("") == []
+
+
+def test_frozen_thalo_not_split_after_ra(nlp):
+    """VERB+ရ+သလို must not become ရသ + လို (fake NP + VP)."""
+    assert nlp.word_segment("မြင်ရသလို") == ["မြင်", "ရ", "သလို"]
+    assert nlp.word_segment("ဖြစ်ရသလို") == ["ဖြစ်", "ရ", "သလို"]
+    assert nlp.word_segment("ရသလို") == ["ရ", "သလို"]

@@ -45,7 +45,7 @@ def test_unicode_prose_pos_and_process():
     assert tags[4] == ("သည်", "SFP")
     assert tags[-1] == ("။", "PUNCT")
 
-    doc = process(GO_TO_SCHOOL)
+    doc = process(GO_TO_SCHOOL, gazetteer=False)
     assert doc["words"] == GO_TO_SCHOOL_WORDS
     assert doc["pos_tags"] == tags
     assert "".join(doc["sentences"]) == doc["raw_text"]
@@ -59,7 +59,7 @@ def test_zawgyi_converted_text_matches_unicode_pipeline():
     uni = zg2uni(zg)
     assert to_unicode(zg) == uni
     assert word_tokenize(uni) == GO_TO_SCHOOL_WORDS
-    assert process(uni)["words"] == GO_TO_SCHOOL_WORDS
+    assert process(uni, gazetteer=False)["words"] == GO_TO_SCHOOL_WORDS
 
 
 def test_mixed_english_and_burmese():
@@ -84,7 +84,7 @@ def test_punctuation_and_multi_sentence_paragraph():
     assert "စာအုပ်" in words
     assert words.count("။") == 2
 
-    doc = process(para)
+    doc = process(para, gazetteer=False)
     assert len(doc["sentences"]) == 2
     assert len(doc["pos_tags"]) == len(doc["words"])
     assert all(t in POS_TAGS for _, t in doc["pos_tags"])
@@ -101,7 +101,7 @@ def test_long_paragraph_process_is_non_empty():
         "ကျွန်တော်ကျောင်းသို့သွားသည်။ "
         "သူစာအုပ်ကိုဖတ်သည်။ Hello world!"
     )
-    doc = process(paragraph)
+    doc = process(paragraph, gazetteer=False)
     assert len(doc["words"]) >= 10
     assert len(doc["sentences"]) >= 2
     assert len(doc["syllables"]) >= len(doc["words"])

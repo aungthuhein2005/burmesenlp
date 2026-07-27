@@ -56,4 +56,15 @@ NOUN_RULES = [
         ),
         action=keep({"NOUN"}),
     ),
+    # VERB/NOUN ambiguous head + plural တွေ/များ → noun reading (observers,
+    # analysts, …). Lexicon must list NOUN; without it this never fires.
+    Rule(
+        name="verb_noun_before_plural_is_noun",
+        priority=91,
+        when=lambda ctx: (
+            {"VERB", "NOUN"} <= ctx.candidates[ctx.index]
+            and ctx.nxt in ("တွေ", "များ", "တို့")
+        ),
+        action=keep({"NOUN"}),
+    ),
 ]

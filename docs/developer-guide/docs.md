@@ -34,6 +34,8 @@ docs/
 
 API pages use `::: module.path` directives; keep public docstrings accurate.
 
+Speed smoke (manual, not CI): see repository `benchmarks/README.md`.
+
 ## GitHub Pages
 
 Pushing to `main` runs `.github/workflows/docs.yml`, which builds and deploys

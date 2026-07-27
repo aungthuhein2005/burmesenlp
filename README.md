@@ -3,7 +3,11 @@
 **BurmeseNLP** (`burmesenlp`) is an open-source Python library for rule-based
 Myanmar (Burmese) natural language processing.
 
-Version **1.0** focuses on preprocessing: normalization, Zawgyi ↔ Unicode conversion, syllable / word / sentence segmentation, lexicon management, and rule-based part-of-speech tagging. It is fast, dependency-light, and designed as the foundation for future hybrid and machine-learning engines.
+Version **1.0** focuses on preprocessing: normalization, Zawgyi ↔ Unicode
+**APIs**, syllable / word / sentence segmentation, multi-word expressions
+(BMWE), lexicon management, rule-based POS tagging, and phrase chunking.
+It is fast, dependency-light, and designed as the foundation for future
+hybrid and machine-learning engines.
 
 ```bash
 pip install burmesenlp
@@ -50,7 +54,8 @@ From a clone (development):
 pip install -e ".[dev]"
 ```
 
-Requires **Python 3.9+**. Runtime has **no third-party NLP dependencies**.
+Requires **Python 3.9+**. Runtime depends on **PyYAML** (phrase grammar); there
+are no other third-party NLP dependencies.
 
 ## Quick start
 
@@ -143,8 +148,17 @@ Version 1 is **rule-based only**:
 - No NER, sentiment, or spell checking
 - Word segmentation quality depends on lexicon coverage; longest-match may
 prefer compounds present in the dictionary
+- POS and chunk rules are heuristic — expect residual tagging/chunk errors
 - Zawgyi *detection* is heuristic — prefer explicit `zg2uni` when encoding
 is known
+- **`process()` does not auto-convert Zawgyi.** It only runs `normalize()`
+  (NFC / zero-width). Convert first:
+
+```python
+from burmesenlp import zg2uni, process
+
+doc = process(zg2uni(zawgyi_text))
+```
 
 These gaps are intentional for a lightweight, deterministic V1.
 
@@ -163,13 +177,14 @@ These gaps are intentional for a lightweight, deterministic V1.
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md), [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md),
+and [SECURITY.md](SECURITY.md).
 Please keep V1 PRs focused on rule-based quality, packaging, docs, and tests —
 do not add unfinished ML features to the public API.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+Apache-2.0 — see [LICENSE](LICENSE).
 
 ## References
 

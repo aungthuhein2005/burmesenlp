@@ -12,6 +12,9 @@
         - BMWEEngine
         - MWEEntry
         - MWEToken
+        - GazetteerManager
+        - GazetteerHit
+        - EntityType
         - normalize
         - looks_like_zawgyi
         - word_tokenize

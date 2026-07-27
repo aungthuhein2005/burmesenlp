@@ -1,0 +1,67 @@
+# Deprecated: use semantic_roles.yml (POSTP map).
+# Kept so older paths / docs that mention this filename still resolve.
+# Content is loaded via the same loader as semantic_roles.yml.
+
+version: 1
+
+postpositions:
+  က:
+    default_role: AGENT
+    grammatical_function: SUBJECT
+    possible_roles: [AGENT, SUBJECT]
+  သည်:
+    default_role: SUBJECT
+    grammatical_function: SUBJECT
+    possible_roles: [SUBJECT, TOPIC]
+  ကတော့:
+    default_role: TOPIC
+    grammatical_function: SUBJECT
+    possible_roles: [TOPIC, SUBJECT]
+  ကို:
+    default_role: OBJECT
+    grammatical_function: OBJECT
+    possible_roles: [OBJECT, GOAL, EXPERIENCER]
+  အား:
+    default_role: OBJECT
+    grammatical_function: OBJECT
+    possible_roles: [OBJECT, BENEFICIARY]
+  မှ:
+    default_role: SOURCE
+    grammatical_function: ADJUNCT
+    possible_roles: [SOURCE, LOCATION, INSTRUMENT]
+  သို့:
+    default_role: DESTINATION
+    grammatical_function: ADJUNCT
+    possible_roles: [DESTINATION, DIRECTION]
+  မှာ:
+    default_role: LOCATION
+    grammatical_function: ADJUNCT
+    possible_roles: [LOCATION, TIME]
+  တွင်:
+    default_role: LOCATION
+    grammatical_function: ADJUNCT
+    possible_roles: [LOCATION, TIME]
+  ၌:
+    default_role: LOCATION
+    grammatical_function: ADJUNCT
+    possible_roles: [LOCATION]
+  ၏:
+    default_role: POSSESSOR
+    grammatical_function: POSSESSOR
+    possible_roles: [POSSESSOR]
+  ရဲ့:
+    default_role: POSSESSOR
+    grammatical_function: POSSESSOR
+    possible_roles: [POSSESSOR]
+  ထက်:
+    default_role: STANDARD
+    grammatical_function: ADJUNCT
+    possible_roles: [STANDARD, COMPARISON]
+  ဖြင့်:
+    default_role: INSTRUMENT
+    grammatical_function: ADJUNCT
+    possible_roles: [INSTRUMENT, MANNER]
+  နှင့်:
+    default_role: COMITATIVE
+    grammatical_function: ADJUNCT
+    possible_roles: [COMITATIVE, COORDINATION]

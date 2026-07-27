@@ -11,7 +11,10 @@ from collections import defaultdict
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 from ..chunking import PhraseChunker
+from ..chunking.clause import ClauseParser
 from ..chunking.models import Chunk
+from ..gazetteer import GazetteerManager
+from ..gazetteer.models import GazetteerHit
 from ..lexicon import Lexicon
 from ..mwe import BMWEEngine
 from ..mwe.models import MWEToken
@@ -42,6 +45,9 @@ class BurmeseNLP:
     *normalized* form of the input (zero-width characters stripped, NFC
     applied); ``normalize()`` is exposed so callers can reproduce it.
 
+    Zawgyi is **not** auto-converted: call ``zg2uni`` / ``to_unicode`` before
+    ``process`` when the encoding is Zawgyi or unknown.
+
     Loading a dictionary that does not exist or is malformed raises
     ``LexiconError`` instead of silently falling back.  Custom files
     (``.json`` or ``.txt``) are merged on top of the bundled default
@@ -54,6 +60,8 @@ class BurmeseNLP:
         *,
         lexicon: Optional[Lexicon] = None,
         split_on_final_particles: bool = True,
+        gazetteer: bool = True,
+        gazetteer_manager: Optional[GazetteerManager] = None,
     ):
         if lexicon is not None:
             self.lexicon = lexicon
@@ -69,6 +77,21 @@ class BurmeseNLP:
         self._mwe = BMWEEngine(lexicon=self.lexicon)
         self._tagger = POSTagger(self.lexicon)
         self._chunker = PhraseChunker()
+        self._clause_parser = ClauseParser()
+        # Gazetteer NER after POS on post-BMWE words → Document.entities
+        if gazetteer_manager is not None:
+            self._gazetteer_enabled = True
+            self._gazetteer = gazetteer_manager
+        else:
+            self._gazetteer_enabled = gazetteer
+            self._gazetteer = None
+
+    def _get_gazetteer(self) -> Optional[GazetteerManager]:
+        if not self._gazetteer_enabled:
+            return None
+        if self._gazetteer is None:
+            self._gazetteer = GazetteerManager(lexicon=self.lexicon, autoload=True)
+        return self._gazetteer
 
     # ------------------------------------------------------------------
     # Internal helpers (operate on already-normalized text)
@@ -78,17 +101,45 @@ class BurmeseNLP:
         return self._segmenter.segment(tokenize(norm))
 
     def _analyze(self, norm: str):
-        """Shared path: words → BMWE → POS → chunks → grammar sentences."""
+        """Shared path: words → BMWE → POS → gazetteer → phrases → sentences → clauses.
+
+        Gazetteer NER runs on post-BMWE ``words``; entity spans are then
+        locked as NP inside the phrase chunker (``doc.entities`` stays the
+        semantic layer; ``doc.chunks`` gains entity-backed NPs).
+        """
         word_tokens = self._segmenter.segment(tokenize(norm))
         pre_mwe = [t.text for t in word_tokens]
         words, mwe_spans = self._mwe.process_detailed(pre_mwe)
         pos_tags = self._tagger.tag(words, mwe=mwe_spans)
-        chunks = self._chunker.chunk(words, pos_tags)
+        gaz = self._get_gazetteer()
+        entities: List[GazetteerHit] = (
+            gaz.find_all(words, pos_tags=[t for _, t in pos_tags])
+            if gaz is not None
+            else []
+        )
+        phrase_chunks = self._chunker.chunk(words, pos_tags, entities=entities)
         char_spans = merged_char_spans(word_tokens, mwe_spans)
         sentences = self._sentencer.segment_from_chunks(
-            words, pos_tags, chunks, norm, char_spans=char_spans
+            words, pos_tags, phrase_chunks, norm, char_spans=char_spans
         )
-        return word_tokens, words, mwe_spans, pos_tags, chunks, sentences
+        sentence_bounds = [(s.word_start, s.word_end) for s in sentences]
+        syntax = self._clause_parser.parse_sentences(
+            phrase_chunks,
+            sentence_bounds=sentence_bounds,
+            sentence_texts=[s.text for s in sentences],
+            sentence_char_spans=[(s.start, s.end) for s in sentences],
+            words=words,
+        )
+        return (
+            word_tokens,
+            words,
+            mwe_spans,
+            pos_tags,
+            phrase_chunks,
+            sentences,
+            syntax,
+            entities,
+        )
 
     # ------------------------------------------------------------------
     # Segmentation
@@ -115,7 +166,7 @@ class BurmeseNLP:
         norm = normalize(text)
         if not norm:
             return []
-        *_, sentences = self._analyze(norm)
+        *_, sentences, _syntax, _entities = self._analyze(norm)
         return [s.text for s in sentences]
 
     def sentence_segment_with_positions(self, text: str) -> List[Tuple[str, int, int]]:
@@ -126,7 +177,7 @@ class BurmeseNLP:
         norm = normalize(text)
         if not norm:
             return []
-        *_, sentences = self._analyze(norm)
+        *_, sentences, _syntax, _entities = self._analyze(norm)
         return [(s.text, s.start, s.end) for s in sentences]
     # ------------------------------------------------------------------
     # POS tagging
@@ -176,8 +227,12 @@ class BurmeseNLP:
     def process(self, text: str) -> Document:
         """Run the full pipeline once, with all outputs mutually consistent.
 
-        Flow: normalize → syllables → words → BMWE → POS → phrase chunk
-        → grammar-aware sentence segmentation.
+        Flow: normalize → syllables → words → BMWE → POS → gazetteer NER
+        → phrase chunk (entity spans locked as NP) → sentences → ClauseParser.
+
+        ``doc.entities`` is the semantic gazetteer layer; matching spans also
+        appear as NP chunks with ``features["entity"]``. Pass ``gazetteer=False``
+        to skip NER.
         """
         norm = normalize(text)
         syllable_tokens = tokenize(norm)
@@ -191,11 +246,20 @@ class BurmeseNLP:
                 sentence_word_tags=[],
                 chunks=[],
                 mwe=[],
+                entities=[],
+                sentence_trees=[],
             )
 
-        _word_tokens, words, mwe_spans, pos_tags, chunks, sentences = self._analyze(
-            norm
-        )
+        (
+            _word_tokens,
+            words,
+            mwe_spans,
+            pos_tags,
+            chunks,
+            sentences,
+            syntax,
+            entities,
+        ) = self._analyze(norm)
 
         sentence_word_tags: List[List[Tuple[str, str]]] = [
             pos_tags[s.word_start : s.word_end] for s in sentences
@@ -210,6 +274,8 @@ class BurmeseNLP:
             sentence_word_tags=sentence_word_tags,
             chunks=chunks,
             mwe=mwe_spans,
+            entities=entities,
+            sentence_trees=list(syntax),
         )
 
     # ------------------------------------------------------------------
@@ -294,5 +360,8 @@ class BurmeseNLP:
 
 
 def process(text: str, **kwargs) -> Document:
-    """One-shot pipeline: normalize → words → MWE → POS → chunks → sentences."""
+    """One-shot pipeline: normalize → words → MWE → POS → gazetteer → phrases → sentences → clauses.
+
+    Does not auto-convert Zawgyi; use ``zg2uni`` / ``to_unicode`` first if needed.
+    """
     return BurmeseNLP(**kwargs).process(text)

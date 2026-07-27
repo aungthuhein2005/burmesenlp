@@ -2,6 +2,7 @@
 
 Pipeline placement (v1):
     normalize → words → BMWE → POS → phrase chunks → **sentences**
+    → typed clause overlays (per sentence)
 
 Design rules
 ------------
@@ -13,10 +14,12 @@ Design rules
 3. Split when:
    - terminal punctuation (။ ? ! …) is seen, or
    - end of document, or
-   - a completed predicate is followed by a new sentence onset
+   - a completed *finite* predicate is followed by a new sentence onset
      (NP / GREETING / …) when soft-splitting is enabled.
 4. Do **not** split after an isolated NP / PP / FIXED_EXPRESSION alone.
-5. Consume non-overlapping phrase chunks (CLAUSE overlays ignored);
+5. Do **not** treat politeness / finite particles (ပါတယ်, ပါဘူး, …) as
+   sentence onsets even if mistagged as NOUN.
+6. Consume non-overlapping phrase chunks (clause overlays ignored);
    uncovered tokens become singleton units so the covering is complete.
 
 ``split_on_final_particles`` is retained for API compatibility: when
@@ -29,8 +32,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import List, Optional, Sequence, Tuple, Union
 
-from ..chunking.models import Chunk, ChunkType
+from .. import grammar
+from ..chunking.models import Chunk, ChunkType, is_clause_type
 from .syllable import FULL_STOP, SECTION, Token
+
 
 _TERMINAL_PUNCT = frozenset(".!?\u2026")
 
@@ -50,6 +55,29 @@ _ONSET_TYPES = frozenset(
         ChunkType.GREETING,
         ChunkType.NUMERAL_PHRASE,
     }
+)
+
+# Surfaces that look like NP onsets when mistagged but belong to the VP tail.
+_FALSE_ONSET_SURFACES = frozenset(
+    {
+        "ပါတယ်",
+        "ပါဘူး",
+        "ချင်ပါတယ်",
+        "သည်",
+        "တယ်",
+        "မည်",
+        "ပြီ",
+        "ပါ",
+        "ဘူး",
+        "လား",
+        "မလား",
+    }
+)
+
+_CONTINUATION_SURFACES = (
+    grammar.POST_FINAL_CONTINUATIONS
+    | grammar.CONJUNCTIONS
+    | frozenset({"ပေမဲ့", "ဒါပေမယ့်", "သော်လည်း", "သို့သော်", "လို့", "ဆို", "ဆိုတဲ့"})
 )
 
 
@@ -119,7 +147,7 @@ class SentenceSegmenter:
 
         units = _covering_units(words, tags, chunks)
         # Exclusive word-index cuts (end of each sentence).
-        cuts = self._boundary_cuts(units, tags)
+        cuts = self._boundary_cuts(units, words, tags)
         return _sentences_from_cuts(words, text, cuts, char_spans)
 
     def segment(self, word_tokens: Sequence[Token], text: str) -> List[Sentence]:
@@ -143,7 +171,12 @@ class SentenceSegmenter:
     # Boundary detection
     # ------------------------------------------------------------------
 
-    def _boundary_cuts(self, units: Sequence[_Unit], tags: Sequence[str]) -> List[int]:
+    def _boundary_cuts(
+        self,
+        units: Sequence[_Unit],
+        words: Sequence[str],
+        tags: Sequence[str],
+    ) -> List[int]:
         """Return exclusive word indices where sentences end."""
         cuts: List[int] = []
         seen_predicate = False
@@ -161,14 +194,16 @@ class SentenceSegmenter:
             # Track predicates (VP / FIXED_VERB / GREETING).
             if unit.ctype in _PREDICATE_TYPES:
                 seen_predicate = True
-                # Soft split: completed VP followed by a new sentence onset
+                # Soft split: completed finite VP followed by a new onset
                 # (no punctuation).  Disabled when split_on_final_particles
                 # is False (API-compatible "punctuation only" mode).
                 if (
                     self.split_on_final_particles
                     and nxt is not None
                     and not nxt.is_punct
-                    and _is_sentence_onset(nxt, tags)
+                    and _predicate_is_finite(unit, words, tags)
+                    and _is_sentence_onset(nxt, words, tags)
+                    and not _is_continuation(nxt, words, tags)
                 ):
                     cuts.append(unit.end + 1)
                     seen_predicate = False
@@ -182,8 +217,9 @@ class SentenceSegmenter:
                 and seen_predicate
                 and nxt is not None
                 and not nxt.is_punct
-                and _is_sentence_onset(nxt, tags)
                 and _unit_is_sfp_tail(unit, tags)
+                and _is_sentence_onset(nxt, words, tags)
+                and not _is_continuation(nxt, words, tags)
             ):
                 cuts.append(unit.end + 1)
                 seen_predicate = False
@@ -230,9 +266,9 @@ def _covering_units(
     chunks: Sequence[Chunk],
 ) -> List[_Unit]:
     """Build a complete, non-overlapping covering of the token stream."""
-    # Ignore CLAUSE overlays — phrase layer is the segmentation substrate.
+    # Ignore clause overlays — phrase layer is the segmentation substrate.
     phrase = sorted(
-        (c for c in chunks if c.type != ChunkType.CLAUSE),
+        (c for c in chunks if not is_clause_type(c.type)),
         key=lambda c: (c.start, -(c.end - c.start)),
     )
     # Drop overlaps (keep first / longest-first already sorted).
@@ -287,12 +323,57 @@ def _span_is_punct(tags: Sequence[str], start: int, end: int) -> bool:
     return all(tags[j] == "PUNCT" for j in range(start, end + 1))
 
 
-def _is_sentence_onset(unit: _Unit, tags: Sequence[str]) -> bool:
+def _is_sentence_onset(
+    unit: _Unit,
+    words: Sequence[str],
+    tags: Sequence[str],
+) -> bool:
+    surface = words[unit.start]
+    if surface in _FALSE_ONSET_SURFACES:
+        return False
+    if tags[unit.start] in {"SFP", "PART", "AUX", "CONJ", "POSTP", "PUNCT"}:
+        return False
     if unit.ctype in _ONSET_TYPES:
         return True
     # Bare pronoun / noun starting a new clause after a predicate.
     if unit.ctype is None and tags[unit.start] in {"PRON", "NOUN", "NUM"}:
         return True
+    return False
+
+
+def _is_continuation(
+    unit: _Unit,
+    words: Sequence[str],
+    tags: Sequence[str],
+) -> bool:
+    """True when the next unit continues the current sentence (conj / quotative)."""
+    if words[unit.start] in _CONTINUATION_SURFACES:
+        return True
+    if tags[unit.start] == "CONJ":
+        return True
+    return False
+
+
+def _predicate_is_finite(
+    unit: _Unit,
+    words: Sequence[str],
+    tags: Sequence[str],
+) -> bool:
+    """Require finite/politeness evidence before soft-splitting after a VP.
+
+    Bare VERB / VERB+AUX stems (သွားခဲ့) must not soft-split before a following
+    ပါတယ် that was mistagged as NOUN — the politeness particle belongs to
+    this sentence.
+    """
+    for j in range(unit.end, unit.start - 1, -1):
+        if tags[j] in {"SFP", "PART"}:
+            return True
+        if words[j] in _FALSE_ONSET_SURFACES:
+            return True
+        if tags[j] in {"VERB", "AUX", "IDIOM"}:
+            # Keep scanning left through the verbal nucleus.
+            continue
+        break
     return False
 
 

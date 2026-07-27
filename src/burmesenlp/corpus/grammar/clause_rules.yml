@@ -1,0 +1,135 @@
+# Clause grammar (linguist-editable) — phrase-based, hierarchical.
+#
+# ClauseParser consumes Phrase Chunks only (never raw words for structure).
+# Relative constructions nest inside NP (RelativeModifier + HeadNoun);
+# they are never top-level Sentence clauses.
+#
+# Hierarchy: Sentence → Clause → Phrase → Word → Syllable
+#
+# ---------------------------------------------------------------------------
+# V1 phrase patterns: EXPLICIT LISTS (deliberate trade-off)
+# ---------------------------------------------------------------------------
+# We enumerate short sequences (NP PP VP, NP VP, …) so linguists can read and
+# debug the grammar deterministically. This does NOT scale when new phrase
+# types (ADJP, ADVP, TIME_PHRASE, …) arrive — combinatorial explosion.
+#
+# TODO(V2): migrate to a grammar-based matcher, e.g.
+#   Clause   ::= NP? PP* VP
+#   Relative ::= (NP|PP)* VP NP
+#   Main     ::= Phrase* VP
+# without changing the ClauseParser public API (see pattern_match.py).
+# Do NOT treat the explicit list as a solved long-term design.
+
+version: 1
+
+settings:
+  require_final_vp: true
+  allow_nested_relative: true
+  merge_consecutive_pp: false
+  prefer_longest_match: true
+  allow_empty_np: false
+
+# Reusable phrase-sequence templates (clause kinds inherit these).
+patterns:
+  basic_clause:
+    # Explicit V1 inventory (see header TODO for V2 grammar migration).
+    - [NP, PP, PP, VP]
+    - [NP, PP, VP]
+    - [NP, NP, VP]
+    - [NP, VP]
+    - [PP, VP]
+    - [VP]
+    - [GREETING]
+
+  relative_clause:
+    # Head-final: modifier material + relative-marked VP + head NP
+    - [NP, PP, VP, NP]
+    - [PP, VP, NP]
+    - [NP, VP, NP]
+    - [VP, NP]
+
+clauses:
+
+  # MAIN: never from a bare particle / end_marker alone.
+  # Requires final VP + sentence-final marker inside that VP + template match,
+  # and only after higher-precedence subordinate markers have claimed spans.
+  main:
+    inherit: basic_clause
+    relation: matrix
+    precedence: 10
+    nesting: false
+    markers: []
+    end_markers:
+      # Ambiguous surfaces (သည် / ပြီ / ပါ / …): validation only — never
+      # sufficient by themselves to open or close a MAIN clause.
+      - သည်
+      - တယ်
+      - ပါ
+      - လေ
+      - ရယ်
+      - မယ်
+      - ပြီ
+      - ဘူး
+      - မည်
+      - ၏
+      - ပါတယ်
+      - ပါဘူး
+
+  conditional:
+    inherit: basic_clause
+    relation: condition
+    precedence: 20
+    nesting: false
+    markers:
+      - လျှင်မူ
+      - လျှင်
+      - ရင်
+
+  reason:
+    inherit: basic_clause
+    relation: cause
+    precedence: 30
+    nesting: false
+    markers:
+      - သောကြောင့်
+      - ကြောင့်
+      - သဖြင့်
+      - ထို့ကြောင့်
+
+  # PURPOSE: NP…VP+marker → PURPOSE clause; bare VP+marker → PurposeVP.
+  # TODO(V2): richer subject detection and control/raising distinctions.
+  # Purpose-marker ambiguity is a known V1 limitation — not silently "solved".
+  purpose:
+    inherit: basic_clause
+    relation: purpose
+    precedence: 25
+    nesting: false
+    markers:
+      - ရန်
+      - အောင်
+      - ဖို့
+
+  contrast:
+    inherit: basic_clause
+    relation: contrast
+    precedence: 35
+    nesting: false
+    markers:
+      - သော်လည်း
+      - သော်
+      - သို့သော်
+      - ဒါပေမယ့်
+      - ပေမဲ့
+
+  # Nesting only — never a top-level Sentence clause.
+  relative:
+    inherit: relative_clause
+    relation: modifier
+    precedence: 40
+    nesting: true
+    markers:
+      - သော
+      - သည့်
+      - ဆိုတဲ့
+      - တဲ့
+      - မည့်

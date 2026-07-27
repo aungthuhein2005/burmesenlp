@@ -10,5 +10,6 @@ Generated from package docstrings via **mkdocstrings**.
 | POS | [tag](tag.md) |
 | Chunking | [chunking](chunking.md) |
 | MWE | [mwe](mwe.md) |
+| Gazetteer | [gazetteer](gazetteer.md) |
 | Lexicon | [lexicon](lexicon.md) |
 | Normalize & Zawgyi | [normalize](normalize.md) |

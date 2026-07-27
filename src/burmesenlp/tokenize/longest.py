@@ -80,13 +80,16 @@ class WordSegmenter:
             matched = False
             for length in range(min(max_syl, m - k), 1, -1):
                 candidate = "".join(s.text for s in run[k : k + length])
-                if candidate in self._lexicon:
-                    out.append(
-                        Token(candidate, run[k].start, run[k + length - 1].end, WORD)
-                    )
-                    k += length
-                    matched = True
-                    break
+                if candidate not in self._lexicon:
+                    continue
+                if _steals_frozen_onset(run, k, length):
+                    continue
+                out.append(
+                    Token(candidate, run[k].start, run[k + length - 1].end, WORD)
+                )
+                k += length
+                matched = True
+                break
             if matched:
                 continue
 
@@ -106,3 +109,18 @@ class WordSegmenter:
             out.append(Token(syl.text, syl.start, syl.end, WORD))
             k += 1
         return out
+
+
+def _steals_frozen_onset(run: Sequence[Token], start: int, length: int) -> bool:
+    """True if this match would absorb the first syllable(s) of a frozen word."""
+    end = start + length
+    texts = [t.text for t in run]
+    for seq in grammar.FROZEN_WORD_SYLLABLES:
+        n = len(seq)
+        # Frozen word starts strictly inside the candidate span.
+        for p in range(start + 1, end):
+            if p + n > len(texts):
+                continue
+            if tuple(texts[p : p + n]) == seq:
+                return True
+    return False

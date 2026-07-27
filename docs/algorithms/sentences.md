@@ -1,7 +1,7 @@
 # Grammar-aware sentences
 
 `SentenceSegmenter.segment_from_chunks` covers the token stream with
-non-overlapping phrase chunks (CLAUSE overlays ignored), then:
+non-overlapping phrase chunks (typed clause overlays ignored), then:
 
 - Splits on terminal punctuation (`။` `?` `!` …).
 - Treats VP / FIXED_VERB / GREETING as predicates.

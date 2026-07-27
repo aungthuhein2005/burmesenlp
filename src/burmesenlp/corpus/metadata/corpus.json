@@ -1,6 +1,73 @@
 {
   "name": "burmesenlp-corpus",
-  "version": "0.1.0",
-  "description": "Bundled linguistic resources for burmesenlp",
-  "resources": []
+  "version": "1.0.0",
+  "description": "Bundled linguistic resources for burmesenlp V1",
+  "license": "Apache-2.0",
+  "resources": [
+    {
+      "name": "default-lexicon",
+      "path": "lexicon/data/*.json",
+      "version": "1.0.0",
+      "license": "Apache-2.0",
+      "role": "production",
+      "used_by": ["word segmentation", "POS tagging"]
+    },
+    {
+      "name": "phrase-grammar",
+      "path": "corpus/grammar/",
+      "files": [
+        "phrase_rules.yml",
+        "phrase_markers.yml",
+        "phrase_exceptions.yml"
+      ],
+      "version": "1.0.0",
+      "license": "Apache-2.0",
+      "role": "production",
+      "used_by": ["phrase chunking"]
+    },
+    {
+      "name": "myanmar-idioms",
+      "path": "corpus/idioms/idioms.json",
+      "version": "1.0.0",
+      "license": "Apache-2.0",
+      "role": "production",
+      "used_by": ["BMWE"],
+      "format": "JSON array of strings (see corpus/idioms/README.md)"
+    },
+    {
+      "name": "idioms-cache",
+      "path": "corpus/idioms/idioms.cache.json",
+      "version": "1.0.0",
+      "license": "Apache-2.0",
+      "role": "production-cache",
+      "used_by": ["BMWE startup"],
+      "notes": "Auto-generated tokenized cache; rebuild when idioms or lexicon change"
+    },
+    {
+      "name": "zawgyi-rules",
+      "path": "zawgyi/*.json",
+      "version": "1.0.0",
+      "license": "Apache-2.0",
+      "role": "production",
+      "used_by": ["zg2uni", "uni2zg"]
+    },
+    {
+      "name": "gazetteers",
+      "path": "corpus/gazetteers/",
+      "version": "1.0.0",
+      "license": "Apache-2.0",
+      "role": "lookup",
+      "used_by": ["GazetteerManager"],
+      "notes": "String-array entity lists + holidays objects; not auto-run in process()"
+    },
+    {
+      "name": "corpus-scaffolds",
+      "path": "corpus/{ner,sentiment,names,dictionaries,syllables,...}",
+      "version": "0.0.0",
+      "license": "Apache-2.0",
+      "role": "placeholder",
+      "used_by": [],
+      "notes": "Layout reserved for later versions; not part of the V1 public API"
+    }
+  ]
 }

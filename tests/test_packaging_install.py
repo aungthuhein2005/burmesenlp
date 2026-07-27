@@ -19,7 +19,7 @@ EXPECTED_WORDS = ["ကျွန်တော်", "ကျောင်း", "သ�
 
 def test_process_works_without_dictionary_path():
     """Always-on smoke: bundled lexicon, no dictionary_path."""
-    doc = process(SMOKE_TEXT)
+    doc = process(SMOKE_TEXT, gazetteer=False)
     assert doc["words"] == EXPECTED_WORDS
     assert doc["pos_tags"]
     assert len(doc["pos_tags"]) == len(doc["words"])
@@ -69,7 +69,7 @@ from pathlib import Path
 from burmesenlp import process, __version__
 
 assert __version__ == "1.0.0"
-doc = process("ကျွန်တော်ကျောင်းသို့သွားသည်။")
+doc = process("ကျွန်တော်ကျောင်းသို့သွားသည်။", gazetteer=False)
 assert doc["words"] == ["ကျွန်တော်", "ကျောင်း", "သို့", "သွား", "သည်", "။"]
 assert doc["pos_tags"]
 

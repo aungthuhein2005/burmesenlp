@@ -80,4 +80,4 @@ exist for later versions — do not advertise them as working V1 features.
 ## License
 
 By contributing, you agree that your contributions are licensed under the
-MIT License (see [LICENSE](LICENSE)).
+Apache License 2.0 (see [LICENSE](LICENSE)).

@@ -11,13 +11,14 @@ from __future__ import annotations
 # Post-positional / case markers (subject, object, locative, ...)
 PPM_MARKERS = frozenset({
     "က", "ကို", "မှာ", "မှ", "၌", "တွင်", "အား", "သို့",
-    "ဖြင့်", "နှင့်", "နဲ့", "ရဲ့", "၏",
+    "ဖြင့်", "နှင့်", "နဲ့", "ရဲ့", "၏", "ကတော့",
 })
 
 # Clause/sentence-level conjunctions
 CONJUNCTIONS = frozenset({
     "သို့မဟုတ်", "ဒါပေမယ့်", "ဒါမှမဟုတ်", "ဘာဖြစ်လို့လဲဆိုတော့",
     "ထိုနည်းတူ", "ထို့ကြောင့်", "သို့သော်", "ပြီးတော့", "လျှင်",
+    "သလို", "ပေမဲ့",
 })
 
 # Particles that may legitimately end a sentence (used for tagging).
@@ -49,6 +50,18 @@ NEGATION_PARTICLE = "မ"
 
 # Productive nominalizers / plural markers (used for POS suffix analysis)
 NOUN_SUFFIXES = frozenset({"များ", "တွေ", "မှု", "ချက်", "ခြင်း", "ရေး"})
+
+# Multi-syllable function words that greedy longest-match must not break by
+# stealing their onset (e.g. ရသ+လို instead of ရ+သလို).
+FROZEN_WORD_SYLLABLES: tuple[tuple[str, ...], ...] = (
+    ("သ", "လို"),
+    ("က", "တော့"),
+    ("ဆို", "တဲ့"),
+    ("ပေ", "မဲ့"),
+    ("ဒါ", "ပေ", "မယ့်"),
+    ("သော", "ကြော", "င့်"),
+    ("သို့", "သော်"),
+)
 
 # Numeral words
 NUMERAL_WORDS = frozenset({

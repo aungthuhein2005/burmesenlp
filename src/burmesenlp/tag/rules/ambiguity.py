@@ -111,6 +111,19 @@ AMBIGUITY_RULES = [
         action=keep_only("POSTP"),
     ),
     Rule(
+        name="ကတော့_after_np_is_postp",
+        priority=83,
+        when=lambda ctx: (
+            ctx.curr == "ကတော့"
+            and (
+                _npish(ctx.prev_cands())
+                or (ctx.prev is not None and ctx.prev in ("တို့", "များ", "တွေ"))
+            )
+            and "POSTP" in ctx.candidates[ctx.index]
+        ),
+        action=keep_only("POSTP"),
+    ),
+    Rule(
         name="pron_sentence_initial",
         priority=81,
         when=lambda ctx: (

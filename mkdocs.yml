@@ -101,6 +101,7 @@ nav:
       - Phrase chunking: user-guide/chunking.md
       - Sentence segmentation: user-guide/sentences.md
       - Lexicon: user-guide/lexicon.md
+      - Gazetteers: user-guide/gazetteers.md
       - CLI: user-guide/cli.md
   - Algorithms:
       - algorithms/index.md
@@ -122,6 +123,7 @@ nav:
       - Chunking: api/chunking.md
       - MWE: api/mwe.md
       - Lexicon: api/lexicon.md
+      - Gazetteer: api/gazetteer.md
       - Normalize & Zawgyi: api/normalize.md
   - Developer guide:
       - developer-guide/index.md

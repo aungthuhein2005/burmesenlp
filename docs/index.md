@@ -54,4 +54,4 @@ flowchart TD
 
 ## License
 
-MIT — see the repository `LICENSE` file.
+Apache-2.0 — see the repository `LICENSE` file.

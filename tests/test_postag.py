@@ -6,7 +6,7 @@ from burmesenlp.lexicon import Lexicon
 
 @pytest.fixture(scope="module")
 def nlp():
-    return BurmeseNLP()
+    return BurmeseNLP(gazetteer=False)
 
 
 def test_basic_tagging(nlp):
@@ -117,3 +117,36 @@ def test_unknown_defaults(nlp):
 
 def test_empty(nlp):
     assert nlp.pos_tag([]) == []
+
+
+def test_akae_khat_before_plural_is_noun(nlp):
+    """Occupation noun + တွေ must not stay VERB (else chunker builds a VP)."""
+    tagged = nlp.pos_tag(["နိုင်ငံရေး", "အကဲခတ်", "တွေ", "ကတော့"])
+    assert tagged[1] == ("အကဲခတ်", "NOUN")
+    assert tagged[2][1] in ("PART", "NOUN")  # plural particle
+    assert tagged[3] == ("ကတော့", "POSTP")
+
+
+def test_akae_khat_as_verb_when_finite(nlp):
+    tagged = nlp.pos_tag(["သူ", "အကဲခတ်", "သည်"])
+    assert tagged[1] == ("အကဲခတ်", "VERB")
+
+
+def test_akae_khat_တွေ_chunks_as_np(nlp):
+    from burmesenlp.chunking.models import ChunkType
+
+    doc = nlp.process("နိုင်ငံရေးအကဲခတ်တွေကတော့")
+    tags = dict(doc.pos_tags)
+    assert tags.get("အကဲခတ်") == "NOUN"
+    assert tags.get("ကတော့") == "POSTP"
+    # Topic marker attaches into a PP with the subject NP (not a lone NP).
+    pp_texts = [c.text for c in doc.chunks if c.type == ChunkType.POSTPOSITIONAL_PHRASE]
+    assert any("အကဲခတ်" in t and "ကတော့" in t for t in pp_texts)
+    lone_kato = [
+        c
+        for c in doc.chunks
+        if c.text == "ကတော့" and c.type == ChunkType.NOUN_PHRASE
+    ]
+    assert not lone_kato
+    vp_texts = [c.text for c in doc.chunks if c.type == ChunkType.VERB_PHRASE]
+    assert not any("အကဲခတ်" in t for t in vp_texts)

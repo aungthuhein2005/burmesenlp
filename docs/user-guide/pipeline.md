@@ -3,6 +3,11 @@
 `process(text)` and `BurmeseNLP.process(text)` run the full V1 stack once and
 return a [`Document`](../api/pipeline.md).
 
+Input is expected to be **Unicode Myanmar** text. The pipeline runs NFC /
+zero-width cleanup via `normalize()`; it does **not** call `zg2uni`. Convert
+Zawgyi with `zg2uni` / `to_unicode` before `process()` when needed
+(see [Normalization & Zawgyi](normalize.md)).
+
 ## Order
 
 1. Normalize  

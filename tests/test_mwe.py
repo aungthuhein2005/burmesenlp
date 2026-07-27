@@ -126,7 +126,7 @@ def test_spacing_variants_same_tokens(lexicon):
 
 def test_loader_matches_pipeline_word_segment(lexicon):
     """BMWE load tokens must equal BurmeseNLP.word_segment on the same string."""
-    nlp = BurmeseNLP()
+    nlp = BurmeseNLP(gazetteer=False)
     expr = "အိတ်ပေါက်နှင့် ဖားကောက်"
     assert expression_to_tokens(expr, nlp.lexicon) == tuple(nlp.word_segment(expr))
 
@@ -147,7 +147,7 @@ def test_idiom_merges_after_word_tokenize(empty_engine, lexicon):
 
 
 def test_real_idioms_match_user_sentence():
-    nlp = BurmeseNLP()
+    nlp = BurmeseNLP(gazetteer=False)
     text = "ဒီကောင် အိတ်ပေါက်နှင့် ဖားကောက် နေတာပါကွာ"
     doc = nlp.process(text)
     assert any(m.category == "IDIOM" for m in doc.mwe)
@@ -242,5 +242,5 @@ def test_public_exports():
     assert BMWEEngine is not None
     assert MWEEntry is not None
     assert MWEToken is not None
-    doc = process("စာ။")
+    doc = process("စာ။", gazetteer=False)
     assert hasattr(doc, "mwe")

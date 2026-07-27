@@ -9,12 +9,12 @@ from burmesenlp.tokenize import available_word_engines, sentence_tokenize, sylla
 
 def test_process_matches_burmesenlp_instance():
     text = "စာပေကိုဖတ်သည်။"
-    assert process(text) == BurmeseNLP().process(text)
+    assert process(text, gazetteer=False) == BurmeseNLP(gazetteer=False).process(text)
 
 
 def test_word_tokenize_longest_matches_pipeline():
     text = "မြန်မာစာပေ"
-    nlp = BurmeseNLP()
+    nlp = BurmeseNLP(gazetteer=False)
     assert word_tokenize(text) == nlp.word_segment(text)
     assert word_tokenize(text, engine="longest") == nlp.word_segment(text)
 
@@ -26,7 +26,7 @@ def test_unknown_word_engine_raises():
 
 def test_pos_tag_rule_engine():
     words = ["မြန်မာ", "စာပေ", "ကို"]
-    nlp = BurmeseNLP()
+    nlp = BurmeseNLP(gazetteer=False)
     assert pos_tag(words) == nlp.pos_tag(words)
     assert pos_tag(words, engine="rule") == nlp.pos_tag(words)
 

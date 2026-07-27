@@ -1,6 +1,9 @@
 # Main phrase-chunking grammar (linguist-editable).
 # Quote atoms that contain ?, *, or | so YAML flow lists stay valid.
 # PROPN aliases to NOUN at match time.
+#
+# Clause typing (MAIN / CONDITIONAL / REASON / …) lives in clause_rules.yml
+# and is applied by ClauseParser — not by these phrase patterns.
 
 version: 1
 
@@ -22,25 +25,19 @@ phrases:
     type: VP
     priority: 200
     patterns:
+      # Negation / particle shells around the verb (မ … ဘူး, … ပြီး ပြီ, …)
       - ["PART", "VERB", "AUX*", "PART*", "SFP?"]
       - ["ADV?", "VERB", "AUX+", "PART*", "SFP?"]
       - ["VERB", "AUX", "PART", "SFP"]
       - ["VERB", "AUX", "SFP"]
       - ["VERB", "AUX"]
       - ["VERB", "AUX+", "SFP?"]
+      - ["VERB", "PART+", "SFP?"]
       - ["VERB", "AUX", "PART*"]
+      - ["PART", "VERB", "PART+", "SFP?"]
+      - ["PART", "VERB", "SFP"]
+      - ["VERB", "SFP"]
       - ["VERB"]
-
-  # =========================
-  # Clause (composed; low priority — markers drive primary clause splits)
-  # =========================
-  - name: CLAUSE
-    type: CLAUSE
-    priority: 50
-    patterns:
-      - ["NOUN_PHRASE", "POSTPOSITIONAL_PHRASE", "VERB_PHRASE"]
-      - ["NOUN_PHRASE", "VERB_PHRASE"]
-      - ["POSTPOSITIONAL_PHRASE", "VERB_PHRASE"]
 
   # =========================
   # Postpositional Phrase (PP)
@@ -50,7 +47,9 @@ phrases:
     priority: 150
     patterns:
       - ["NOUN_PHRASE", "POSTP"]
-      - ["(PROPN|NOUN|PRON|NUM)+", "POSTP"]
+      # Plural / topic shell before case/topic marker (အကဲခတ် တွေ ကတော့)
+      - ["(PROPN|NOUN|PRON)+", "PART*", "POSTP"]
+      - ["(PROPN|NOUN|PRON)+", "POSTP"]
       - ["NOUN", "POSTP"]
 
   # =========================
@@ -60,12 +59,13 @@ phrases:
     type: NP
     priority: 100
     patterns:
-      - ["(PROPN|NOUN)+", "POSTP"]
+      # POSTP-ending shapes belong to PP (priority 150) — do not duplicate here.
       - ["PRON", "PART", "SFP?"]
       - ["PRON", "PART"]
       - ["ADJ", "NOUN"]
       - ["NUM", "NOUN"]
       - ["NOUN", "NOUN+"]
+      - ["(PROPN|NOUN|PRON)+", "PART"]
       - ["(PROPN|NOUN|PRON)+"]
       - ["NOUN"]
       - ["PRON"]

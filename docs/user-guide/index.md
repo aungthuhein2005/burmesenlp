@@ -12,4 +12,5 @@ Practical usage of BurmeseNLP V1 — from the full pipeline down to individual s
 | NP / VP / PP | [Chunking](chunking.md) |
 | Grammar-aware sentences | [Sentences](sentences.md) |
 | Dictionary | [Lexicon](lexicon.md) |
+| Entity lists | [Gazetteers](gazetteers.md) |
 | Console script | [CLI](cli.md) |

@@ -1,0 +1,110 @@
+# Heuristic postposition → semantic role inventory (V1).
+# Syntax (PP chunk) stays separate from semantics (role labels).
+# Myanmar postpositions are polysemous — defaults only; V2+ will add context.
+
+version: 1
+
+POSTP:
+  က:
+    default: AGENT
+    grammatical_function: SUBJECT
+    possible:
+      - AGENT
+      - SUBJECT
+
+  သည်:
+    default: SUBJECT
+    grammatical_function: SUBJECT
+    possible:
+      - SUBJECT
+      - TOPIC
+
+  ကတော့:
+    default: TOPIC
+    grammatical_function: SUBJECT
+    possible:
+      - TOPIC
+      - SUBJECT
+
+  ကို:
+    default: OBJECT
+    grammatical_function: OBJECT
+    possible:
+      - OBJECT
+      - GOAL
+      - EXPERIENCER
+
+  အား:
+    default: OBJECT
+    grammatical_function: OBJECT
+    possible:
+      - OBJECT
+      - BENEFICIARY
+
+  မှ:
+    default: SOURCE
+    grammatical_function: ADJUNCT
+    possible:
+      - SOURCE
+      - LOCATION
+      - INSTRUMENT
+
+  သို့:
+    default: DESTINATION
+    grammatical_function: ADJUNCT
+    possible:
+      - DESTINATION
+      - DIRECTION
+
+  မှာ:
+    default: LOCATION
+    grammatical_function: ADJUNCT
+    possible:
+      - LOCATION
+      - TIME
+
+  တွင်:
+    default: LOCATION
+    grammatical_function: ADJUNCT
+    possible:
+      - LOCATION
+      - TIME
+
+  ၌:
+    default: LOCATION
+    grammatical_function: ADJUNCT
+    possible:
+      - LOCATION
+
+  ၏:
+    default: POSSESSOR
+    grammatical_function: POSSESSOR
+    possible:
+      - POSSESSOR
+
+  ရဲ့:
+    default: POSSESSOR
+    grammatical_function: POSSESSOR
+    possible:
+      - POSSESSOR
+
+  ထက်:
+    default: STANDARD
+    grammatical_function: ADJUNCT
+    possible:
+      - STANDARD
+      - COMPARISON
+
+  ဖြင့်:
+    default: INSTRUMENT
+    grammatical_function: ADJUNCT
+    possible:
+      - INSTRUMENT
+      - MANNER
+
+  နှင့်:
+    default: COMITATIVE
+    grammatical_function: ADJUNCT
+    possible:
+      - COMITATIVE
+      - COORDINATION
