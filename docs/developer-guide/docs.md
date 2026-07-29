@@ -29,6 +29,7 @@ docs/
   api/              # mkdocstrings pages
   developer-guide/
   research/
+  references.md
   assets/
 ```
 

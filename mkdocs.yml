@@ -9,6 +9,8 @@ copyright: Copyright &copy; BurmeseNLP contributors
 theme:
   name: material
   language: en
+  logo: images/logo.png
+  favicon: images/favicon.ico
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
@@ -132,3 +134,4 @@ nav:
   - Research:
       - research/index.md
       - Roadmap: research/roadmap.md
+  - References: references.md

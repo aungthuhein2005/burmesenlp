@@ -1,5 +1,9 @@
 # BurmeseNLP
 
+<p align="center">
+  <img src="images/logo.png" alt="BurmeseNLP" width="160" />
+</p>
+
 **BurmeseNLP** (`burmesenlp`) is an open-source Python library for **rule-based**
 Myanmar (Burmese) natural language processing.
 
@@ -51,6 +55,7 @@ flowchart TD
 - [Quickstart](getting-started/quickstart.md)
 - [User guide](user-guide/index.md)
 - [API reference](api/index.md)
+- [References](references.md)
 
 ## License
 

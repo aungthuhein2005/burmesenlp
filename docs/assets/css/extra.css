@@ -6,3 +6,10 @@
 .md-typeset .language-python {
   line-height: 1.45;
 }
+
+.md-header__button.md-logo img,
+.md-header__button.md-logo svg {
+  height: 2rem;
+  width: auto;
+  border-radius: 0.25rem;
+}

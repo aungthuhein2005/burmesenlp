@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/images/logo.png" alt="BurmeseNLP" width="180" />
+</p>
+
 # BurmeseNLP
 
 **BurmeseNLP** (`burmesenlp`) is an open-source Python library for rule-based
