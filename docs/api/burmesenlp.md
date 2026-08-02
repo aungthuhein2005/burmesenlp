@@ -15,6 +15,8 @@
         - GazetteerManager
         - GazetteerHit
         - EntityType
+        - CorpusExporter
+        - CorpusImporter
         - normalize
         - looks_like_zawgyi
         - word_tokenize

@@ -126,6 +126,7 @@ nav:
       - MWE: api/mwe.md
       - Lexicon: api/lexicon.md
       - Gazetteer: api/gazetteer.md
+      - Corpus export: api/export.md
       - Normalize & Zawgyi: api/normalize.md
   - Developer guide:
       - developer-guide/index.md

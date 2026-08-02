@@ -12,4 +12,5 @@ Generated from package docstrings via **mkdocstrings**.
 | MWE | [mwe](mwe.md) |
 | Gazetteer | [gazetteer](gazetteer.md) |
 | Lexicon | [lexicon](lexicon.md) |
+| Corpus export | [export](export.md) |
 | Normalize & Zawgyi | [normalize](normalize.md) |
