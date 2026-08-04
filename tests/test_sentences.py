@@ -158,3 +158,12 @@ def test_soft_split_still_works_after_finite_sfp(nlp):
 def test_contrast_connector_keeps_one_sentence(nlp):
     text = "သူသွားပြီပေမဲ့သူမလာဘူး။"
     assert len(_stripped(nlp.sentence_segment(text))) == 1
+
+
+def test_section_mark_does_not_force_sentence_split(nlp):
+    """၊ is PUNCT but non-terminal — must not hard-split like ။."""
+    text = "ငါး၊ အသား၊ ဟင်းသီးဟင်းရွက်တို့ကို ဝယ်သည်။"
+    sents = _stripped(nlp.sentence_segment(text))
+    assert len(sents) == 1
+    assert sents[0].endswith("။")
+    assert "၊" in sents[0]

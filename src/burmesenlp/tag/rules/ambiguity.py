@@ -100,6 +100,18 @@ AMBIGUITY_RULES = [
         ),
         action=keep_only("AUX"),
     ),
+    # NOUN/VERB-ambiguous word immediately before an AUX → must be VERB
+    # (an auxiliary can only attach to a verbal stem). Fixes cases like
+    # ပညာသင် + ခဲ့ where ပညာသင် was defaulting to NOUN via TAG_PREFERENCE.
+    Rule(
+        name="ambiguous_noun_verb_before_aux",
+        priority=91,
+        when=lambda ctx: (
+            {"NOUN", "VERB"} <= ctx.candidates[ctx.index]
+            and "AUX" in ctx.nxt_cands()
+        ),
+        action=keep_only("VERB"),
+    ),
     Rule(
         name="က_after_np_is_postp",
         priority=83,

@@ -85,6 +85,15 @@ def _is_terminal_punct(text: str) -> bool:
     return bool(text) and all(c in _TERMINAL_PUNCT for c in text)
 
 
+def _is_terminal_surface(word: str) -> bool:
+    """True for sentence-final punctuation surfaces (။ . ! ? …).
+
+    Deliberately excludes SECTION (၊), which is a pause / list separator
+    and must not force a hard sentence cut.
+    """
+    return word == FULL_STOP or _is_terminal_punct(word)
+
+
 @dataclass(frozen=True)
 class Sentence:
     text: str
@@ -102,7 +111,8 @@ class _Unit:
     start: int
     end: int  # inclusive
     ctype: Optional[ChunkType]
-    is_punct: bool
+    is_punct: bool  # any PUNCT (including ၊) — onset / soft-split guards
+    is_terminal: bool  # only terminal punct — hard sentence cuts
 
 
 class SentenceSegmenter:
@@ -186,7 +196,8 @@ class SentenceSegmenter:
             nxt = units[ui + 1] if ui + 1 < n else None
 
             # Rule 3: terminal punctuation ends the sentence.
-            if unit.is_punct:
+            # Non-terminal PUNCT (၊ , : …) must not cut here.
+            if unit.is_terminal:
                 cuts.append(unit.end + 1)
                 seen_predicate = False
                 continue
@@ -295,6 +306,7 @@ def _covering_units(
                     end=c.end,
                     ctype=c.type,
                     is_punct=_span_is_punct(tags, c.start, c.end),
+                    is_terminal=_span_is_terminal(words, c.start, c.end),
                 )
             )
             i = c.end + 1
@@ -313,6 +325,7 @@ def _covering_units(
                 or words[i] == FULL_STOP
                 or words[i] == SECTION
                 or _is_terminal_punct(words[i]),
+                is_terminal=_span_is_terminal(words, i, i),
             )
         )
         i += 1
@@ -321,6 +334,10 @@ def _covering_units(
 
 def _span_is_punct(tags: Sequence[str], start: int, end: int) -> bool:
     return all(tags[j] == "PUNCT" for j in range(start, end + 1))
+
+
+def _span_is_terminal(words: Sequence[str], start: int, end: int) -> bool:
+    return all(_is_terminal_surface(words[j]) for j in range(start, end + 1))
 
 
 def _is_sentence_onset(

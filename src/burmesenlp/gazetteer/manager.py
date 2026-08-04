@@ -374,12 +374,40 @@ def _has_locative_context(
     return False
 
 
+_EMBEDDABLE_TYPES = frozenset({EntityType.RELIGION, EntityType.ETHNIC_GROUP})
+
+
+def _is_embedded_in_noun_compound(
+    hit: GazetteerHit,
+    tokens: Sequence[str],
+    tags: Optional[Sequence[str]],
+) -> bool:
+    """True if hit is flanked by NOUNs with no boundary — i.e. it's a
+    modifier inside a longer compound (e.g. ဗုဒ္ဓဘာသာ inside
+    ...ဗုဒ္ဓဘာသာအထက်တန်းကျောင်း), not a standalone entity mention.
+    """
+    if tags is None:
+        return False
+    left = hit.start - 1
+    right = hit.end + 1
+    has_left_noun = left >= 0 and left < len(tags) and tags[left] == "NOUN"
+    has_right_noun = right < len(tags) and tags[right] == "NOUN"
+    return has_left_noun and has_right_noun
+
+
 def _accept_hit(
     hit: GazetteerHit,
     tokens: Sequence[str],
     tags: Optional[Sequence[str]],
 ) -> bool:
     """Filter false-positive short place-name matches."""
+    # Reject religion/ethnic-group hits swallowed inside a longer compound
+    # noun (modifier position), regardless of length — these aren't
+    # standalone mentions.
+    if hit.entity_type in _EMBEDDABLE_TYPES:
+        if _is_embedded_in_noun_compound(hit, tokens, tags):
+            return False
+
     if hit.entity_type not in _PLACE_TYPES:
         return True
     surface = "".join(hit.tokens)
