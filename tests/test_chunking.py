@@ -19,8 +19,8 @@ from burmesenlp.chunking.models import (
 )
 from burmesenlp.chunking.rules import (
     CompiledGrammar,
-    load_all_rules,
     load_aliases,
+    load_all_rules,
     load_clause_rules,
     load_exceptions,
     load_markers,
@@ -357,7 +357,7 @@ def test_chunk_text_api_unicode():
 
 
 def test_default_grammar_loads():
-    from burmesenlp.chunking.rules import reload_default_grammar, load_clause_rules
+    from burmesenlp.chunking.rules import load_clause_rules, reload_default_grammar
 
     reload_default_grammar()
     rules = load_all_rules()

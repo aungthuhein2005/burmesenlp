@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from .base import Rule, keep_only
 
-
 MODIFIER_RULES = [
     Rule(
         name="ပို_before_verb_is_adv",

@@ -36,7 +36,6 @@ from .. import grammar
 from ..chunking.models import Chunk, ChunkType, is_clause_type
 from .syllable import FULL_STOP, SECTION, Token
 
-
 _TERMINAL_PUNCT = frozenset(".!?\u2026")
 
 # Phrase types that count as a completed predicate / utterance.
@@ -472,14 +471,14 @@ def merged_char_spans(
     mwe_spans: Sequence[object],
 ) -> List[Tuple[int, int]]:
     """Map post-MWE word indices to character ``(start, end)`` in the source text."""
-    span_by_start = {getattr(s, "start"): s for s in mwe_spans}
+    span_by_start = {s.start: s for s in mwe_spans}
     spans: List[Tuple[int, int]] = []
     i = 0
     n = len(pre_tokens)
     while i < n:
         m = span_by_start.get(i)
         if m is not None:
-            end_i = getattr(m, "end")
+            end_i = m.end
             spans.append((pre_tokens[i].start, pre_tokens[end_i].end))
             i = end_i + 1
         else:

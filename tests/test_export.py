@@ -6,7 +6,14 @@ import json
 
 import pytest
 
-from burmesenlp import BurmeseNLP, CorpusExporter, CorpusImporter, EntityType, GazetteerManager, Lexicon
+from burmesenlp import (
+    BurmeseNLP,
+    CorpusExporter,
+    CorpusImporter,
+    EntityType,
+    GazetteerManager,
+    Lexicon,
+)
 from burmesenlp.export.schema import ChunkRecord, SentenceRecord
 
 

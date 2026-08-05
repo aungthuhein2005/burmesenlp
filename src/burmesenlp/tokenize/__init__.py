@@ -13,7 +13,6 @@ from __future__ import annotations
 from typing import List, Optional
 
 from ..lexicon import Lexicon
-from ..normalize import normalize
 from .engine import available_word_engines, get_word_engine, register_word_engine
 from .longest import WordSegmenter
 from .sentence import Sentence, SentenceSegmenter

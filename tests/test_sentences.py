@@ -30,7 +30,6 @@ def test_greeting_then_full_clause_not_split_after_subject_marker(nlp):
     doc = nlp.process(text)
     assert "".join(doc.sentences) == doc.raw_text
     # Subject-marker သည် must not be SFP
-    tags = dict(doc.pos_tags)
     # First သည် in the second sentence is POSTP
     is_forms = [(w, t) for w, t in doc.pos_tags if w == "သည်"]
     assert ("သည်", "POSTP") in is_forms

@@ -17,7 +17,6 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Dict, List, Mapping, Optional, Sequence, Tuple
 
-
 # ---------------------------------------------------------------------------
 # Phrase chunk types (shallow chunker)
 # ---------------------------------------------------------------------------

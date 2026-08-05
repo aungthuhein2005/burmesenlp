@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import pytest
 
-from burmesenlp import BurmeseNLP, process
+from burmesenlp import process
 from burmesenlp.chunking import (
+    ChunkType,
     ClauseParser,
     ClauseType,
-    ChunkType,
     chunk_from_tokens,
     load_clause_rules,
     load_postposition_roles,

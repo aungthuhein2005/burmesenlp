@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import pytest
 
@@ -15,7 +14,6 @@ from burmesenlp.mwe.loader import (
     infer_category,
     load_entries,
     try_load_cache,
-    write_cache,
 )
 from burmesenlp.mwe.matcher import choose
 from burmesenlp.mwe.trie import MWETrie

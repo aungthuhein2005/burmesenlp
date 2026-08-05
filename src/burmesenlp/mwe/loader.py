@@ -128,7 +128,6 @@ def _entries_from_cache_payload(
     raw_entries = data.get("entries")
     if not isinstance(raw_entries, list):
         return None
-    out: List[MWEEntry] = []
     by_tokens: Dict[Tuple[str, ...], MWEEntry] = {}
     for item in raw_entries:
         if not isinstance(item, dict):
