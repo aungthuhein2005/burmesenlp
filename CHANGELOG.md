@@ -18,6 +18,8 @@ Keep `__version__` in `src/burmesenlp/__init__.py`, the `version` field in
 - Lexicon entry for `ပညာသင်` includes `VERB` so context rules can apply.
 - Removed invalid Trove classifier `Natural Language :: Burmese` (PyPI/TestPyPI
   rejected uploads with HTTP 400).
+- Removed a zero-width-only junk key from bundled `default.json` (was logging
+  on every import); lexicon sanitize skips are now debug-level only.
 
 ### Changed
 

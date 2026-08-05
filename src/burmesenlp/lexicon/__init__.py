@@ -262,7 +262,7 @@ def _sanitize_entries(
             if tag not in existing:
                 existing.append(tag)
     if skipped:
-        logger.warning(
+        logger.debug(
             "Skipped %d empty-after-normalization entries in %s",
             skipped,
             source,
