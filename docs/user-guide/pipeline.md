@@ -10,13 +10,17 @@ Zawgyi with `zg2uni` / `to_unicode` before `process()` when needed
 
 ## Order
 
-1. Normalize  
-2. Syllable tokenize  
-3. Word tokenize (longest match)  
-4. BMWE merge  
-5. POS tag (MWE-aware)  
-6. Phrase chunk  
-7. Grammar-aware sentence segment  
+Verified against `BurmeseNLP._analyze()`:
+
+1. Normalize
+2. Syllable tokenize
+3. Word tokenize (longest match)
+4. BMWE merge
+5. POS tag (MWE-aware)
+6. Gazetteer NER → `doc.entities` (skip with `gazetteer=False`)
+7. Phrase chunk (entity spans locked as NP)
+8. Grammar-aware sentence segment
+9. Clause parse → `doc.sentence_trees` / `doc.clauses`
 
 ## Document fields
 
@@ -28,8 +32,11 @@ Zawgyi with `zg2uni` / `to_unicode` before `process()` when needed
 | `sentences` | Sentence strings (partition of `raw_text`) |
 | `pos_tags` | `(word, tag)` pairs aligned with `words` |
 | `sentence_word_tags` | Per-sentence slices of `pos_tags` |
-| `chunks` | Phrase `Chunk` objects |
 | `mwe` | Merged `MWEToken` spans |
+| `entities` | Gazetteer NER hits (`PERSON` / `TOWN` / …) |
+| `chunks` | Phrase `Chunk` objects |
+| `sentence_trees` | Per-sentence syntax with nested phrases + clauses |
+| `clauses` | Flat list of clauses from `sentence_trees` |
 
 ## Serialization
 
@@ -39,7 +46,11 @@ payload = doc.to_dict()          # plain dict
 doc.to_json(ensure_ascii=False)  # JSON string
 ```
 
-Mapping-style access still works: `doc["words"]`, `"chunks" in doc`.
+Mapping-style access still works: `doc["words"]`, `"chunks" in doc`,
+`"entities" in doc`, `"clauses" in doc`.
+
+For training-oriented formats (JSONL / CoNLL / BRAT / Label Studio), use
+[`CorpusExporter`](../api/export.md).
 
 ## Consistency
 

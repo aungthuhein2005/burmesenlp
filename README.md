@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/images/logo.png" alt="BurmeseNLP" width="180" />
+  <img src="https://raw.githubusercontent.com/aungthuhein2005/burmesenlp/main/docs/images/logo.png" alt="BurmeseNLP" width="180" />
 </p>
 
 # BurmeseNLP
@@ -9,7 +9,8 @@ Myanmar (Burmese) natural language processing.
 
 Version **1.0** focuses on preprocessing: normalization, Zawgyi ↔ Unicode
 **APIs**, syllable / word / sentence segmentation, multi-word expressions
-(BMWE), lexicon management, rule-based POS tagging, and phrase chunking.
+(BMWE), lexicon management, rule-based POS tagging, phrase chunking,
+gazetteer NER, clause parsing, and corpus export.
 It is fast, dependency-light, and designed as the foundation for future
 hybrid and machine-learning engines.
 
@@ -40,11 +41,12 @@ No dictionary path or model download is required.
 - **Multi-word expressions** — BMWE trie merge (idioms)
 - **Lexicon** — bundled tagged vocabulary (~24k entries) + mergeable custom JSON/txt
 - **POS tagging** — rule / lexicon-based (`engine="rule"`)
-- **Phrase chunking** — YAML-driven NP / VP / PP / …
+- **Gazetteer NER** — list-based entities (`doc.entities`; PERSON / TOWN / …), on by default
+- **Phrase chunking** — YAML-driven NP / VP / PP / … (entity spans locked as NP)
+- **Clause parsing** — MAIN / PURPOSE / … over phrases (`doc.clauses`)
+- **Corpus export** — JSONL / CoNLL / BRAT / Label Studio via `CorpusExporter`
 - **Pipeline API** — `process(text)` and stateful `BurmeseNLP`
 - **CLI** — `burmesenlp` console script
-
-
 
 ## Installation
 
@@ -64,7 +66,14 @@ are no other third-party NLP dependencies.
 ## Quick start
 
 ```python
-from burmesenlp import BurmeseNLP, process, word_tokenize, pos_tag, zg2uni
+from burmesenlp import (
+    BurmeseNLP,
+    CorpusExporter,
+    process,
+    word_tokenize,
+    pos_tag,
+    zg2uni,
+)
 import json
 
 # One-shot pipeline (returns a Document)
@@ -73,9 +82,24 @@ doc.words
 doc.sentences
 doc.pos_tags
 doc.chunks
+doc.entities   # gazetteer NER (empty if no list hits)
+doc.clauses    # clause layer over phrases
 
-# JSON export
+# Document JSON
 json.dumps(doc.to_dict(), ensure_ascii=False, indent=2)
+
+# Gazetteer NER (default on; skip with gazetteer=False)
+doc = process("ဒေါ်အောင်ဆန်းစုကြည် ရန်ကုန်ကို သွားသည်။")
+for e in doc.entities:
+    print(e.text, e.entity_type)
+
+# Clause parse
+for clause in doc.clauses:
+    print(clause.type, clause.text)
+
+# Corpus export (JSONL / CoNLL / BRAT / Label Studio)
+exporter = CorpusExporter()
+print(exporter.to_jsonl(doc))
 
 # Stateful pipeline
 nlp = BurmeseNLP()
@@ -89,8 +113,6 @@ word_tokenize("ကျွန်တော်ကျောင်းသို့သ�
 pos_tag(["ကျွန်တော်", "ကျောင်း"], engine="rule")
 zg2uni("ျမန္မာစာေပ")
 ```
-
-
 
 ### Custom dictionary
 
@@ -115,33 +137,31 @@ bundled default, use `BurmeseNLP(lexicon=Lexicon.from_file(path))`.
 
 ```bash
 burmesenlp --mode words "ကျွန်တော်ကျောင်းသို့သွားသည်။"
-burmesenlp --json --mode process "စာပေကိုဖတ်သည်။"
+burmesenlp --json --mode all "စာပေကိုဖတ်သည်။"
 burmesenlp --mode zg2uni "ျမန္မာစာေပ"
 ```
 
-
-
 ## Module overview
 
-
-| Module      | Role                                 |
-| ----------- | ------------------------------------ |
-| `pipeline`  | `BurmeseNLP`, `process()`, `Document` |
-| `normalize` | NFC / zero-width / Zawgyi heuristic  |
-| `zawgyi`    | `uni2zg` / `zg2uni` / `to_unicode`   |
-| `tokenize`  | syllable, word (`longest`), sentences |
-| `mwe`       | BMWE multi-word expression merge     |
-| `tag`       | rule-based POS                       |
-| `chunking`  | phrase chunks (YAML grammar)         |
-| `lexicon`   | dictionary load / merge / save       |
-| `grammar`   | closed-class lists                   |
-| `cli`       | console entry point                  |
-
+| Module      | Role                                           |
+| ----------- | ---------------------------------------------- |
+| `pipeline`  | `BurmeseNLP`, `process()`, `Document`          |
+| `normalize` | NFC / zero-width / Zawgyi heuristic            |
+| `zawgyi`    | `uni2zg` / `zg2uni` / `to_unicode`             |
+| `tokenize`  | syllable, word (`longest`), sentences          |
+| `mwe`       | BMWE multi-word expression merge               |
+| `tag`       | rule-based POS                                 |
+| `gazetteer` | list-based NER → `Document.entities`           |
+| `chunking`  | phrase chunks + clause parse                   |
+| `export`    | `CorpusExporter` / `CorpusImporter`            |
+| `lexicon`   | dictionary load / merge / save                 |
+| `grammar`   | closed-class lists                             |
+| `cli`       | console entry point                            |
 
 See [STRUCTURE.md](STRUCTURE.md) for the full layout and the
 [documentation site](https://aungthuhein2005.github.io/burmesenlp/) for guides
-and API reference. Corpus trees under `corpus/` hold V1 grammar/idioms plus
-scaffolds for later versions.
+and API reference. Corpus trees under `corpus/` hold V1 grammar/idioms/gazetteers
+plus scaffolds for later versions.
 
 ## Current limitations
 
@@ -149,13 +169,15 @@ Version 1 is **rule-based only**:
 
 - No machine learning, Transformers, CRF, or embeddings
 - No SentencePiece / BPE / EvoPiece tokenizers
-- No NER, sentiment, or spell checking
+- NER is **gazetteer / list-based only** (not statistical or neural); coverage
+  is limited to bundled entity lists, and short place names need locative cues
+- No sentiment analysis or spell checking
 - Word segmentation quality depends on lexicon coverage; longest-match may
-prefer compounds present in the dictionary
+  prefer compounds present in the dictionary
 - POS and chunk rules are heuristic — expect residual tagging/chunk errors
 - Zawgyi *detection* is heuristic — prefer explicit `zg2uni` when encoding
-is known
-- **`process()` does not auto-convert Zawgyi.** It only runs `normalize()`
+  is known
+- `process()` **does not auto-convert Zawgyi.** It only runs `normalize()`
   (NFC / zero-width). Convert first:
 
 ```python
@@ -165,19 +187,6 @@ doc = process(zg2uni(zawgyi_text))
 ```
 
 These gaps are intentional for a lightweight, deterministic V1.
-
-## Roadmap
-
-
-| Version | Focus                                                         |
-| ------- | ------------------------------------------------------------- |
-| **1.x** | Rule-based production toolkit (this release)                  |
-| **2.x** | Hybrid NLP (rules + statistical models) via engine registries |
-| **3.x** | Deep learning backends                                        |
-| **4.x** | Research platform (e.g. EvoPiece, benchmarks)                 |
-
-
-
 
 ## Contributing
 
@@ -194,4 +203,3 @@ Apache-2.0 — see [LICENSE](LICENSE).
 
 - Ye Kyaw Thu et al., myPOS / sylbreak conventions for Myanmar NLP
 - Rabbit Converter–style Zawgyi ↔ Unicode rule tables
-

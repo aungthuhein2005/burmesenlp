@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "burmesenlp"
-version = "1.0.0"
+version = "1.0.1"
 description = "Production-oriented Myanmar (Burmese) NLP preprocessing: syllable, word and sentence segmentation, rule-based POS tagging, and phrase chunking."
 readme = "README.md"
 license = { text = "Apache-2.0" }
@@ -15,7 +15,6 @@ classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
-    "Natural Language :: Burmese",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",

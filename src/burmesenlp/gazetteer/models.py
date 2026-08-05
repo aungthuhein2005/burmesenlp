@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional, Tuple
+from typing import Dict, Tuple
 
 from .types import EntityType
 
@@ -16,8 +16,8 @@ class GazetteerHit:
     tokens: Tuple[str, ...]
     entity_type: EntityType
     start: int = 0
-    end: int = 0  # inclusive token index when from find_all / longest_match
-    attributes: Dict[str, Any] = field(default_factory=dict)
+    end: int = 0  # inclusive token index
+    attributes: Dict[str, object] = field(default_factory=dict)
 
     @property
     def type(self) -> str:

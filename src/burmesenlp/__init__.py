@@ -36,7 +36,7 @@ from .tokenize import sentence_tokenize, syllable_tokenize, word_tokenize
 from .tokenize.syllable import Token, syllable_segment
 from .zawgyi import is_zawgyi, to_unicode, uni2zg, zg2uni
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 
 __all__ = [
     "BurmeseNLP",
