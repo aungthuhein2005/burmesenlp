@@ -11,6 +11,7 @@ from collections import defaultdict
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 from ..chunking import PhraseChunker
+from ..chunking.chunker import PosInput
 from ..chunking.clause import ClauseParser
 from ..chunking.models import Chunk
 from ..gazetteer import GazetteerManager
@@ -78,6 +79,7 @@ class BurmeseNLP:
         self._tagger = POSTagger(self.lexicon)
         self._chunker = PhraseChunker()
         self._clause_parser = ClauseParser()
+        self._gazetteer: Optional[GazetteerManager] = None
         # Gazetteer NER after POS on post-BMWE words → Document.entities
         if gazetteer_manager is not None:
             self._gazetteer_enabled = True
@@ -199,7 +201,7 @@ class BurmeseNLP:
     def chunk_from_tokens(
         self,
         words: Sequence[str],
-        pos_tags: Sequence[object],
+        pos_tags: PosInput,
     ) -> List[Chunk]:
         """Chunk from words + POS tags (does not re-tag)."""
         return self._chunker.chunk(words, pos_tags)

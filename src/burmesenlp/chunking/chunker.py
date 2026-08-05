@@ -9,8 +9,9 @@ chunks — never by scanning words alone.
 
 from __future__ import annotations
 
-from typing import List, Optional, Sequence, Tuple, Union
+from typing import List, Mapping, Optional, Sequence, Tuple, Union
 
+from ..gazetteer.manager import GazetteerManager
 from ..gazetteer.models import GazetteerHit
 from ..lexicon import Lexicon
 from ..normalize import normalize
@@ -196,7 +197,7 @@ class PhraseChunker:
             if covered[i]:
                 i += 1
                 continue
-            best: Optional[Tuple[int, int, ChunkType, object]] = None
+            best: Optional[Tuple[int, int, ChunkType, Mapping[str, str]]] = None
             best_key: Optional[Tuple[int, int]] = None
             for rule, compiled in self._grammar.pattern_rules:
                 if is_clause_type(rule.type):
@@ -248,7 +249,7 @@ def chunk(
     *,
     lexicon: Optional[Lexicon] = None,
     grammar: Optional[CompiledGrammar] = None,
-    gazetteer: Optional[object] = None,
+    gazetteer: Optional[GazetteerManager] = None,
     use_gazetteer: bool = True,
 ) -> List[Chunk]:
     """Normalize → segment → POS → optional gazetteer → phrase chunk.
@@ -257,8 +258,6 @@ def chunk(
     the same way as ``BurmeseNLP.process``. Pass ``use_gazetteer=False`` for
     a fast syntax-only pass, or inject a preloaded ``GazetteerManager``.
     """
-    from ..gazetteer.manager import GazetteerManager
-
     lex = lexicon if lexicon is not None else Lexicon.default()
     norm = normalize(text)
     words = [t.text for t in WordSegmenter(lex).segment(tokenize(norm))]

@@ -40,11 +40,11 @@ def disambiguate(words: Sequence[str], candidates: List[TagSet]) -> List[str]:
     i = 0
     while i < n:
         matched = False
-        for rule in SEQUENCE_RULES:
-            start = rule.match(words, candidates, i)
+        for seq_rule in SEQUENCE_RULES:
+            start = seq_rule.match(words, candidates, i)
             if start is None:
                 continue
-            patches = rule.filters(start)
+            patches = seq_rule.filters(start)
             for idx, allowed in patches.items():
                 if 0 <= idx < n:
                     narrowed = candidates[idx] & set(allowed)

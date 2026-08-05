@@ -34,6 +34,7 @@ from typing import List, Optional, Sequence, Tuple, Union
 
 from .. import grammar
 from ..chunking.models import Chunk, ChunkType, is_clause_type
+from ..mwe.models import MWEToken
 from .syllable import FULL_STOP, SECTION, Token
 
 _TERMINAL_PUNCT = frozenset(".!?\u2026")
@@ -468,7 +469,7 @@ def _sentences_from_cuts(
 
 def merged_char_spans(
     pre_tokens: Sequence[Token],
-    mwe_spans: Sequence[object],
+    mwe_spans: Sequence[MWEToken],
 ) -> List[Tuple[int, int]]:
     """Map post-MWE word indices to character ``(start, end)`` in the source text."""
     span_by_start = {s.start: s for s in mwe_spans}
