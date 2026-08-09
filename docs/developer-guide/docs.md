@@ -28,10 +28,13 @@ docs/
   tutorials/
   api/              # mkdocstrings pages
   developer-guide/
-  research/
+  research/         # repo-only (excluded from the public site)
   references.md
   assets/
 ```
+
+`docs/research/` (including the roadmap) stays in the repository for contributors but is
+excluded from the published MkDocs site via `exclude_docs` in `mkdocs.yml`.
 
 API pages use `::: module.path` directives; keep public docstrings accurate.
 

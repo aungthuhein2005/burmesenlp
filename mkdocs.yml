@@ -87,6 +87,10 @@ extra:
     - icon: fontawesome/brands/github
       link: https://github.com/aungthuhein2005/burmesenlp
 
+# Repo-only notes (roadmap, etc.) — keep in docs/ but do not publish to Pages.
+exclude_docs: |
+  research/**
+
 nav:
   - Home: index.md
   - Getting started:
@@ -132,7 +136,4 @@ nav:
       - developer-guide/index.md
       - Contributing: developer-guide/contributing.md
       - Building docs: developer-guide/docs.md
-  - Research:
-      - research/index.md
-      - Roadmap: research/roadmap.md
   - References: references.md
