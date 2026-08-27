@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Keep `__version__` in `src/burmesenlp/__init__.py`, the `version` field in
 `pyproject.toml`, and this file in sync on every release.
 
-## [Unreleased]
+## [1.1.0] - 2026-08-27
 
 ### Added
 
