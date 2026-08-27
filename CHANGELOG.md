@@ -8,6 +8,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Keep `__version__` in `src/burmesenlp/__init__.py`, the `version` field in
 `pyproject.toml`, and this file in sync on every release.
 
+## [Unreleased]
+
+### Added
+
+- `engine="xlmr"` POS tagger backed by
+  [`aungthuhein-dev/burmese-pos-xlmr`](https://huggingface.co/aungthuhein-dev/burmese-pos-xlmr)
+  (XLM-RoBERTa, myPOS tagset). Standalone tagging only, via
+  `pos_tag(words, engine="xlmr")`; not wired into `BurmeseNLP.process()`.
+  Requires the optional `xlmr` extra (`pip install burmesenlp[xlmr]`).
+
+### Fixed
+
+- Gazetteer entity spans are now locked to `PROPN` in `Document.pos_tags`
+  itself, not just inside the phrase chunker. Multi-token names/places no
+  longer keep garbage tags on trailing syllables from the context-blind
+  first POS pass (e.g. `ထက်` as `CONJ`, `ဘို` as `VERB`).
+
 ## [1.0.1] - 2026-08-04
 
 ### Fixed

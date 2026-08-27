@@ -8,6 +8,16 @@ pip install burmesenlp
 
 Requires **Python 3.9+**. Runtime depends only on **PyYAML** (phrase grammar).
 
+### Optional: `engine="xlmr"` POS tagger
+
+```bash
+pip install "burmesenlp[xlmr]"
+```
+
+Pulls in `transformers`/`torch` for the XLM-RoBERTa POS engine (see
+[POS tagging](../user-guide/pos.md#alternate-engine-enginexlmr)). Not
+required for the default `engine="rule"` pipeline.
+
 ## From source (development)
 
 ```bash
