@@ -4,7 +4,7 @@ site_url: https://aungthuhein2005.github.io/burmesenlp/
 repo_url: https://github.com/aungthuhein2005/burmesenlp
 repo_name: aungthuhein2005/burmesenlp
 edit_uri: edit/main/docs/
-copyright: Copyright &copy; BurmeseNLP contributors
+copyright: Copyright &copy; BurmeseNLP contributors — Made with ❤️ for Burmese
 
 theme:
   name: material
