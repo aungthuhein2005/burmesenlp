@@ -24,7 +24,7 @@ def test_process_works_without_dictionary_path():
     assert doc["pos_tags"]
     assert len(doc["pos_tags"]) == len(doc["words"])
     assert doc["sentences"]
-    assert __version__ == "1.0.1"
+    assert __version__ == "1.1.0"
 
 
 @pytest.mark.packaging
@@ -68,7 +68,7 @@ def test_fresh_wheel_install_process(tmp_path):
 from pathlib import Path
 from burmesenlp import process, __version__
 
-assert __version__ == "1.0.1"
+assert __version__ == "1.1.0"
 doc = process("ကျွန်တော်ကျောင်းသို့သွားသည်။", gazetteer=False)
 assert doc["words"] == ["ကျွန်တော်", "ကျောင်း", "သို့", "သွား", "သည်", "။"]
 assert doc["pos_tags"]
