@@ -23,7 +23,7 @@ print(doc.words)
 # ['ကျွန်တော်', 'ကျောင်း', 'သို့', 'သွား', 'သည်', '။']
 ```
 
-## Pipeline (V1)
+## Pipeline
 
 ```mermaid
 flowchart TD
