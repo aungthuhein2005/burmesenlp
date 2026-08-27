@@ -28,3 +28,21 @@ nlp = BurmeseNLP()
 doc = nlp.process(text)
 doc.pos_tags
 ```
+
+## Alternate engine: `engine="xlmr"`
+
+An XLM-RoBERTa model fine-tuned on the
+[myPOS tagset](https://huggingface.co/aungthuhein-dev/burmese-pos-xlmr) is
+available as a second engine, for standalone tagging only:
+
+```python
+from burmesenlp import pos_tag
+
+pos_tag(words, engine="xlmr")  # myPOS labels: n, v, ppm, part, conj, ...
+```
+
+Requires the `xlmr` extra (`pip install burmesenlp[xlmr]`; pulls in
+`transformers`/`torch`, imported lazily). Its label set does **not** match
+the rule engine's tagset above (no `PROPN`, no `SFP`/`PART`/`AUX` split), so
+it is not wired into `BurmeseNLP.process()` — chunking, sentence
+segmentation, and clause parsing all assume `engine="rule"` tags.

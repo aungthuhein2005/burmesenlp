@@ -13,8 +13,17 @@ from .rule import POSTagger
 
 TaggerFactory = Callable[[Lexicon], POSTagger]
 
+
+def _xlmr_factory(lexicon: Lexicon) -> POSTagger:
+    """Lazily import :mod:`burmesenlp.tag.xlmr` (optional ``transformers``/``torch``)."""
+    from .xlmr import XLMRTagger
+
+    return XLMRTagger(lexicon)  # type: ignore[return-value]
+
+
 _TAG_ENGINES: Dict[str, TaggerFactory] = {
     "rule": POSTagger,
+    "xlmr": _xlmr_factory,
 }
 
 

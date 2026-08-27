@@ -39,6 +39,25 @@ from ..tokenize.syllable import (
 from .document import Document
 
 
+def _lock_entity_tags(
+    pos_tags: List[Tuple[str, str]],
+    entities: Sequence[GazetteerHit],
+) -> List[Tuple[str, str]]:
+    """Force every token in a confirmed gazetteer span to ``PROPN``.
+
+    ``GazetteerManager.find_all`` returns non-overlapping spans (greedy
+    left-to-right), so spans never need to compete here.
+    """
+    if not entities:
+        return pos_tags
+    tags = list(pos_tags)
+    for ent in entities:
+        for j in range(ent.start, ent.end + 1):
+            if 0 <= j < len(tags):
+                tags[j] = (tags[j][0], "PROPN")
+    return tags
+
+
 class BurmeseNLP:
     """Myanmar (Burmese) NLP preprocessing pipeline.
 
@@ -105,9 +124,15 @@ class BurmeseNLP:
     def _analyze(self, norm: str):
         """Shared path: words → BMWE → POS → gazetteer → phrases → sentences → clauses.
 
-        Gazetteer NER runs on post-BMWE ``words``; entity spans are then
-        locked as NP inside the phrase chunker (``doc.entities`` stays the
-        semantic layer; ``doc.chunks`` gains entity-backed NPs).
+        Gazetteer NER runs on post-BMWE ``words`` using the first POS pass
+        as a disambiguation feature (see ``GazetteerManager.find_all``).
+        Confirmed entity spans are then locked to ``PROPN`` in ``pos_tags``
+        itself — not just inside the phrase chunker — so a name's trailing
+        syllables don't keep whatever tag the context-blind first pass gave
+        them (e.g. ``ထက်`` as CONJ, ``ဘို`` as VERB) once we know they're
+        part of one name. ``doc.entities`` stays the semantic layer;
+        ``doc.chunks`` gains entity-backed NPs built from these same
+        corrected tags.
         """
         word_tokens = self._segmenter.segment(tokenize(norm))
         pre_mwe = [t.text for t in word_tokens]
@@ -119,6 +144,7 @@ class BurmeseNLP:
             if gaz is not None
             else []
         )
+        pos_tags = _lock_entity_tags(pos_tags, entities)
         phrase_chunks = self._chunker.chunk(words, pos_tags, entities=entities)
         char_spans = merged_char_spans(word_tokens, mwe_spans)
         sentences = self._sentencer.segment_from_chunks(

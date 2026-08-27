@@ -49,6 +49,10 @@ docs = [
     "mkdocs-material>=9.5",
     "mkdocstrings[python]>=0.26",
 ]
+xlmr = [
+    "transformers>=4.30",
+    "torch>=2.0",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -70,6 +74,7 @@ testpaths = ["tests"]
 addopts = "-q"
 markers = [
     "packaging: slow wheel/venv install checks (set BURMESENLP_PACKAGING_TEST=1)",
+    "xlmr: downloads the burmese-pos-xlmr model (set BURMESENLP_XLMR_TEST=1)",
 ]
 
 [tool.ruff]
@@ -89,3 +94,10 @@ warn_unused_ignores = true
 ignore_missing_imports = true
 check_untyped_defs = false
 disallow_untyped_defs = false
+
+# transformers/huggingface_hub optionally import `mcp`, which uses match
+# statements (3.10+) that fail to parse under python_version=3.9 above.
+# These are only imported lazily behind engine="xlmr"; skip following them.
+[[tool.mypy.overrides]]
+module = ["transformers.*", "huggingface_hub.*", "torch.*"]
+follow_imports = "skip"

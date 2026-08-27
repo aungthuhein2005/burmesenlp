@@ -38,7 +38,7 @@ def test_unknown_tag_engine_raises():
 
 def test_engine_lists():
     assert available_word_engines() == ["longest"]
-    assert available_tag_engines() == ["rule"]
+    assert available_tag_engines() == ["rule", "xlmr"]
 
 
 def test_syllable_and_sentence_helpers():

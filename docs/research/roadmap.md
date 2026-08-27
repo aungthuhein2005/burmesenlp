@@ -7,6 +7,13 @@
 | **3.x** | Deep learning backends |
 | **4.x** | Research platform (e.g. EvoPiece, benchmarks) |
 
+> **Note:** `engine="xlmr"` (a transformer POS tagger, standalone-only —
+> see [POS tagging](../user-guide/pos.md#alternate-engine-enginexlmr))
+> shipped early, inside the main package as an optional `[xlmr]` extra,
+> rather than waiting for a separate `burmesenlp-models` package. For a
+> single model this keeps things simple; revisit the separate-package
+> split once there are multiple backends or outside model contributions.
+
 ## Documentation strategy
 
 | Stage | Layout |
