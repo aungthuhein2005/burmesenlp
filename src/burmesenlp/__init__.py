@@ -6,7 +6,7 @@ Public API (stable surface — use these from application code):
     BMWEEngine / MWEEntry / MWEToken
     GazetteerManager / EntityType / GazetteerHit
     CorpusExporter / CorpusImporter -- span-based corpus export
-    normalize / looks_like_zawgyi
+    normalize / looks_like_zawgyi / canonical_order
     uni2zg / zg2uni / to_unicode / is_zawgyi
     word_tokenize / syllable_tokenize / sentence_tokenize / pos_tag
     chunk / chunk_from_tokens / Chunk / ChunkType
@@ -28,7 +28,7 @@ from .export import CorpusExporter, CorpusImporter
 from .gazetteer import EntityType, GazetteerHit, GazetteerManager
 from .lexicon import POS_TAGS, Lexicon, LexiconError
 from .mwe import BMWEEngine, MWEEntry, MWEToken
-from .normalize import looks_like_zawgyi, normalize
+from .normalize import canonical_order, looks_like_zawgyi, normalize
 from .pipeline import BurmeseNLP, process
 from .pipeline.document import Document
 from .tag import pos_tag
@@ -55,6 +55,7 @@ __all__ = [
     "CorpusImporter",
     "normalize",
     "looks_like_zawgyi",
+    "canonical_order",
     "is_zawgyi",
     "to_unicode",
     "uni2zg",
