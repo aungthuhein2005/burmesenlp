@@ -34,6 +34,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         from ..bench.cli import main as bench_main
 
         return bench_main(raw_args[1:])
+    if raw_args and raw_args[0] == "fertility":
+        from ..fertility.cli import main as fertility_main
+
+        return fertility_main(raw_args[1:])
 
     parser = argparse.ArgumentParser(
         prog="burmesenlp",
