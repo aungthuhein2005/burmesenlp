@@ -1,0 +1,20 @@
+{
+  "shn": {
+    "lang": "shn",
+    "n_articles": 25,
+    "n_paragraphs": 207,
+    "doc_old_fp_rate": 1.0,
+    "doc_new_fp_rate": 0.0,
+    "para_old_fp_rate": 1.0,
+    "para_new_fp_rate": 0.0
+  },
+  "mnw": {
+    "lang": "mnw",
+    "n_articles": 25,
+    "n_paragraphs": 643,
+    "doc_old_fp_rate": 1.0,
+    "doc_new_fp_rate": 0.0,
+    "para_old_fp_rate": 0.6205287713841369,
+    "para_new_fp_rate": 0.0015552099533437014
+  }
+}

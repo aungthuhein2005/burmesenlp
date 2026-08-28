@@ -61,6 +61,7 @@ where = ["src"]
 burmesenlp = [
     "py.typed",
     "zawgyi/*.json",
+    "zawgyi/*.dat",
     "lexicon/data/*.json",
     "corpus/**/*.txt",
     "corpus/**/*.json",
