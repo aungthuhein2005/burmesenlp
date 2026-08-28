@@ -75,6 +75,7 @@ addopts = "-q"
 markers = [
     "packaging: slow wheel/venv install checks (set BURMESENLP_PACKAGING_TEST=1)",
     "xlmr: downloads the burmese-pos-xlmr model (set BURMESENLP_XLMR_TEST=1)",
+    "bench: downloads myPOS (CC BY-NC-SA) and runs a real evaluation (set BURMESENLP_BENCH_TEST=1)",
 ]
 
 [tool.ruff]

@@ -29,6 +29,12 @@ def _force_utf8_stdout() -> None:
 def main(argv: Optional[List[str]] = None) -> int:
     _force_utf8_stdout()
 
+    raw_args = sys.argv[1:] if argv is None else argv
+    if raw_args and raw_args[0] == "bench":
+        from ..bench.cli import main as bench_main
+
+        return bench_main(raw_args[1:])
+
     parser = argparse.ArgumentParser(
         prog="burmesenlp",
         description="Myanmar (Burmese) text preprocessing: syllable/word/"

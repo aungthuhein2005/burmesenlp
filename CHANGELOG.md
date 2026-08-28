@@ -8,6 +8,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Keep `__version__` in `src/burmesenlp/__init__.py`, the `version` field in
 `pyproject.toml`, and this file in sync on every release.
 
+## [Unreleased]
+
+### Added
+
+- `canonical_order()` in `burmesenlp.normalize`: reorders Myanmar
+  syllable-cluster marks (medials, vowel signs, asat) into a canonical
+  order. NFC cannot do this (Canonical_Combining_Class 0 on nearly all of
+  them), so two different input-method key orders for the same syllable
+  stay distinct strings through NFC forever — a real-corpus scan (myPOS +
+  Burmese Wikipedia) found this affects 4.5-5.4% of token occurrences.
+  Recognizes Unicode's own documented "Contractions" sequences (e.g.
+  ယောက်ျား "man/husband") and passes them through unchanged rather than
+  sorting them. Opt-in; not applied inside `normalize()` or `process()`.
+- `burmesenlp bench`: boundary-level precision/recall/F1 evaluation
+  harness for word segmentation against gold corpora (myPOS v3.0 and the
+  Myanmar ALT treebank; both CC BY-NC-SA, fetched at runtime, never
+  vendored). Supports `--corpus {mypos,alt}`, `--scheme {nopipe,pipe,both}`
+  for myPOS (`word_tokenize()` alone vs. `word_tokenize()` + BMWE against
+  compound-preserving gold — declared, non-comparable schemes, not two
+  cuts of the same number), `--category` (buckets `pipe`-scheme
+  disagreements into date/number, productive grammatical derivation,
+  proper noun, and genuine-compound candidates — a work queue for growing
+  BMWE's trie), and `--diff` against a pre-computed external segmenter's
+  output.
+
+  First-ever published F1s for this toolkit, reported as three numbers
+  because the myPOS aggregate alone is train-on-test: the bundled
+  lexicon's word-form inventory is derived from myPOS (100% of its ~24k
+  word-forms appear in myPOS's gold vocabulary — verified, not assumed),
+  so `word_tokenize()`'s greedy longest-match partly measures recovering
+  its own dictionary's source corpus. myPOS nopipe in-lexicon: F1 0.9516
+  (P=0.9900, R=0.9161); myPOS nopipe **OOV** (honest generalization
+  estimate): F1 **0.7403** (P=0.6078, R=0.9465); **ALT** (independent
+  corpus and word scheme, not implicated in the contamination): F1
+  **0.9042** (P=0.8821, R=0.9274, n=20106). See
+  `docs/developer-guide/bench.md`.
+
 ## [1.1.0] - 2026-08-27
 
 ### Added
