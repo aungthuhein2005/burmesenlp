@@ -123,7 +123,86 @@ Keep `__version__` in `src/burmesenlp/__init__.py`, the `version` field in
   same way: **100% and 87.5% failure respectively, unchanged by
   canonicalization** -- confirming those are genuine information loss
   (Zawgyi has no representation for these letters), not measurement
-  noise. See `research/zawgyi-repair-log/roundtrip_check.py`.
+- `burmesenlp fertility`: token-fertility profiler across four real
+  tokenizers -- `cl100k_base`/`o200k_base` (tiktoken; GPT-3.5/4 and
+  GPT-4o), `qwen2.5`/`mistral` (via the `tokenizers` library, NOT
+  `transformers`+torch -- loads the same vocab files without the ML
+  framework; Gemma substituted for Mistral after confirming it's
+  gated, HTTP 401 without auth). New `fertility` extra
+  (`pip install burmesenlp[fertility]`); vocab files fetched at
+  runtime and cached, never vendored (Qwen's tokenizer.json alone is
+  ~7MB). Reports four explicitly-labelled denominators (tokens per
+  byte/char/syllable/word -- word count is `word_tokenize()` alone,
+  nopipe scheme, stated per corpus like `bench`), per Myanmar/Latin/
+  digit/punctuation script run as well as whole-document, and
+  distributions (mean/p10/p25/median/p75/p90/min/max/spread) rather
+  than a single mean -- same discipline as the repair-log's
+  min/max/spread paragraph scoring, so one pathological document
+  doesn't get averaged away. Both known approximations ship attached
+  to the result data, not just in prose: per-script-run counts are
+  each tokenizer run independently and summed (can only overstate the
+  true whole-document total), and any English baseline is comparable-
+  genre Wikipedia text, not parallel/translated content.
+
+  **Headline finding: which tokenizer you pick matters more than
+  which language you're measuring.** On identical Burmese text,
+  `cl100k_base` and `o200k_base` -- same vendor, same architecture
+  family -- differ by **3.6x** (121 vs 34 tokens on a worked example).
+  Mechanically confirmed, not inferred from decode artifacts: every
+  `cl100k_base` token for Myanmar script is under 3 bytes (a complete
+  Myanmar character is always 3 UTF-8 bytes), so literally zero
+  tokens span even one full character -- pure byte-level fallback,
+  confirmed via `decode_single_token_bytes` on every token produced,
+  not the `�` decode symptom. `o200k_base` produces real
+  syllable-scale merges (every token >=3 bytes) on the same input.
+
+  Burmese-vs-English ratios, Wikipedia (comparable-genre, n=50
+  articles/language), mean tokens/word and mean tokens/byte:
+
+  | tokenizer | word ratio | byte ratio |
+  |---|---|---|
+  | `cl100k_base` | **5.64x** | 2.75x |
+  | `o200k_base` | **1.78x** | **0.89x** |
+  | `qwen2.5` | 4.20x | 2.04x |
+  | `mistral` | 3.72x | 1.83x |
+
+  The o200k_base byte ratio is **below 1**: Burmese is measurably
+  *more* token-efficient per byte than English under that tokenizer,
+  while still 1.78x worse per word under the same tokenizer, on the
+  same text. That inversion is the concrete proof that denominator
+  choice can flip the direction of the answer, not just its
+  magnitude -- confirmed at corpus scale, not a one-sentence artifact.
+  Across the four tokenizers the word ratio alone spans 1.78x-5.64x --
+  a 3.2x range from tokenizer choice alone, language and corpus held
+  constant. The published 4x-9x (up to 13x) figures most likely
+  reflect which tokenizer was measured, the same disease the
+  segmentation F1 figures had before `bench`; myPOS's own
+  `cl100k_base` distribution reaches p90=11.29 and max=13.93 against a
+  mean of 8.77 -- an anecdote quoting the tail looks nothing like an
+  average of the same distribution.
+
+  Two validity bugs caught and fixed before publishing these numbers,
+  not after: (1) a byte-length formula that assumed all
+  `tokenizers`-library vocabs are byte-level BPE -- true for Qwen2.5,
+  false for Mistral's literal-Unicode SentencePiece-derived vocab;
+  detected per-tokenizer from the downloaded `tokenizer.json`'s
+  decoder type rather than assumed uniform. (2) the profiler's own
+  char/byte denominators were computed against a differently-
+  normalized string than `word_tokenize()`/`syllable_tokenize()`
+  actually segment internally (`normalize()` strips zero-width
+  characters the profiler's plain NFC call didn't) -- caught because
+  `looks_like_zawgyi()` (a separate, unfixed instance of the same
+  U+1060-1097 codepoint-collision heuristic already fixed in
+  `is_zawgyi()` earlier in this file) logged warnings during the
+  first corpus-scale run on 2 real Wikipedia documents that a re-run
+  with a fresh random sample did not reproduce -- consistent with
+  genuine, low-frequency Shan/Mon/Karen-script content in Burmese
+  Wikipedia rather than a bug in this profiler, but it surfaced the
+  real normalization mismatch underneath. `looks_like_zawgyi()`
+  itself is not fixed by this change and remains a known gap.
+
+  Full distributions in `research/token-fertility/fertility_results.json`;
+  reproducible via `research/token-fertility/run_corpus_scale.py`.
 
 ## [1.1.0] - 2026-08-27
 

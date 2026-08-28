@@ -53,6 +53,10 @@ xlmr = [
     "transformers>=4.30",
     "torch>=2.0",
 ]
+fertility = [
+    "tiktoken>=0.7",
+    "tokenizers>=0.19",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -77,6 +81,7 @@ markers = [
     "packaging: slow wheel/venv install checks (set BURMESENLP_PACKAGING_TEST=1)",
     "xlmr: downloads the burmese-pos-xlmr model (set BURMESENLP_XLMR_TEST=1)",
     "bench: downloads myPOS (CC BY-NC-SA) and runs a real evaluation (set BURMESENLP_BENCH_TEST=1)",
+    "fertility: downloads tokenizer vocabs and/or Wikipedia text (set BURMESENLP_FERTILITY_TEST=1)",
 ]
 
 [tool.ruff]
