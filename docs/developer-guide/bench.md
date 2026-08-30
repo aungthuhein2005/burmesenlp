@@ -91,6 +91,66 @@ and `ဗိုလ်ချုပ်အောင်ဆန်း` ("General Aung S
 That's unclaimed work between BMWE and the gazetteer, not a bug in this
 categorizer — noted here, not fixed.
 
+## `--freeze-strata` — measuring a lexicon/gazetteer expansion honestly
+
+OOV is defined relative to the lexicon. Expanding the lexicon moves
+tokens from OOV to in-vocabulary, so a naive before/after comparison of
+the OOV stratum scores a *different token set* each time — that measures
+set composition, not accuracy.
+
+```bash
+burmesenlp bench --scheme nopipe --freeze-strata baseline.json   # run BEFORE any expansion — creates the snapshot
+# ... expand the lexicon ...
+burmesenlp bench --scheme nopipe --freeze-strata baseline.json   # run AFTER — reuses the same snapshot
+```
+
+The first run for a given path creates it from the *current* lexicon —
+run this before changing a single entry. Every later run with the same
+path reuses that frozen vocabulary to decide stratum membership, while
+`word_tokenize()` itself still uses the live (possibly-expanded) lexicon
+to produce hypotheses — so a name that moves from OOV to correctly
+segmented after expansion shows up as an OOV-stratum improvement, not as
+a token quietly relabeled into the IV stratum. Works for both `--corpus
+mypos` and `--corpus alt`. Always report the overall (unstratified) F1
+alongside — it's stable under vocabulary changes and can't be gamed this
+way.
+
+## ALT is held out — `--final` is required to score it
+
+Decision, enforced in the tool, not just documented: iterate against
+`--corpus mypos` during development (already known-contaminated, so
+iterating on it costs nothing additional); score `--corpus alt` only for
+a measurement you intend to report. Repeatedly checking ALT during a
+tuning loop ("add names → score ALT → repeat") is the myPOS contamination
+story again, arriving more slowly.
+
+`--corpus alt` refuses to run without `--final`. Every `--final` run is
+appended to a persistent log (`alt_holdout_log.jsonl` in the corpus cache
+dir) with a timestamp and `--reason`; a second `--final` run prints a
+warning listing every prior run, so repeat use is visible in any report
+rather than silently possible. Not a hard block past the first use —
+enforcement is the deliberate flag plus the audit trail, not a counter.
+
+## Gazetteer changes are invisible to `bench` — know this before measuring one
+
+`word_tokenize()` (what `--scheme nopipe` scores) is pure lexicon
+longest-match; `+BMWE` (`--scheme pipe`) adds idiom merging. Neither
+consults the gazetteer — `GazetteerManager` runs strictly *after* both,
+in `BurmeseNLP._analyze()`, only labeling spans of already-final tokens.
+It never merges tokens or feeds back into segmentation. Adding entries to
+`corpus/gazetteers/*.json` alone therefore cannot move any `bench` score,
+regardless of the data's quality — checked directly against
+`WordSegmenter`, `BMWEEngine`, and `tokenize/`: zero references to
+`gazetteer` anywhere in that path.
+
+For a gazetteer expansion to be `bench`-measurable, confirmed entries
+need to also go into the **lexicon** (as `NOUN` — the lexicon's
+`POS_TAGS` has no `PROPN`; that tagging is applied downstream, once the
+gazetteer also recognizes the span, via the entity-lock mechanism in
+`pipeline/__init__.py`). Gazetteer-only additions are real work (entity
+typing, attributes) but will read as a flat `0.0000` change here — that's
+wiring, not evidence about whether named entities matter.
+
 ## `--diff`
 
 Compares against a pre-computed external segmenter's output (one

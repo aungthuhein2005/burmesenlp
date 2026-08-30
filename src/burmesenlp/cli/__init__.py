@@ -1,4 +1,16 @@
-"""Command-line interface: UTF-8 safe on every platform, including Windows."""
+"""Command-line interface: forces UTF-8 on stdin/stdout/stderr on every
+platform, including Windows, where all three default to the console's
+legacy code page (e.g. cp1252), not UTF-8.
+
+The stdin side of this matters most and is easy to miss testing only by
+eye: cp1252 cannot represent Myanmar script, but it also doesn't raise on
+arbitrary UTF-8 bytes -- it silently decodes them into the wrong
+characters (mojibake) instead of failing. Piping a real Myanmar text file
+into this CLI without the override below produces no error and no
+warning, just corrupted input flowing through the entire pipeline. Only
+found by actually piping real Myanmar text through and inspecting the
+output, not by reading the code -- see test_cli_stdin_utf8.py.
+"""
 
 from __future__ import annotations
 
@@ -14,10 +26,12 @@ from ..zawgyi import to_unicode, uni2zg, zg2uni
 _CONVERT_MODES = frozenset({"zg2uni", "uni2zg", "to-unicode"})
 
 
-def _force_utf8_stdout() -> None:
-    # Windows consoles default to a legacy code page (e.g. cp1252) which
-    # cannot encode Myanmar script; reconfigure when possible.
-    for stream in (sys.stdout, sys.stderr):
+def _force_utf8_streams() -> None:
+    # Windows consoles/pipes default all three of stdin/stdout/stderr to
+    # a legacy code page (e.g. cp1252), none of which can represent
+    # Myanmar script; reconfigure all three to UTF-8 when possible.
+    # stdin was missed here previously -- see module docstring.
+    for stream in (sys.stdin, sys.stdout, sys.stderr):
         reconfigure = getattr(stream, "reconfigure", None)
         if reconfigure is not None:
             try:
@@ -27,7 +41,7 @@ def _force_utf8_stdout() -> None:
 
 
 def main(argv: Optional[List[str]] = None) -> int:
-    _force_utf8_stdout()
+    _force_utf8_streams()
 
     raw_args = sys.argv[1:] if argv is None else argv
     if raw_args and raw_args[0] == "bench":

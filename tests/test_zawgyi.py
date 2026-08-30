@@ -6,10 +6,20 @@ import pytest
 
 from burmesenlp import cli
 from burmesenlp.zawgyi import is_zawgyi, to_unicode, uni2zg, zg2uni
+from burmesenlp.zawgyi.zawgyi import DEFAULT_ZAWGYI_THRESHOLD
 
 UNICODE_SAMPLE = "မြန်မာစာပေ"
 # Known Zawgyi rendering of the same phrase (Rabbit uni2zg output).
 ZAWGYI_SAMPLE = "ျမန္မာစာေပ"
+
+# Genuine Shan Unicode (not Zawgyi), real Wikipedia text -- is_zawgyi()
+# flags this (its documented, unfixed false-positive: signal 1's
+# codepoint range is also the Shan letter block), which is exactly why
+# to_unicode() no longer uses is_zawgyi() internally.
+SHAN_SAMPLE = (
+    "ႁႄႇတူဝ်း (တႂ်ႈ) (မၢၼ်ႈ: ဟယ်ဒိုး (အောက်)၊ ဢိင်းၵလဵတ်ႈ: Hei Doe (Lower)) "
+    "ၼႆႉ ပဵၼ်ဝၢၼ်ႈဢၼ်မီးၼႂ်း ဢိူင်ႇမၢႆးလုၼ်ႇ၊ "
+)
 
 
 def test_uni2zg_produces_zawgyi_order():
@@ -37,6 +47,28 @@ def test_to_unicode_converts_only_when_needed():
     # NFC: U+1025 + U+102E -> U+1026
     assert to_unicode("\u1025\u102e") == "\u1026"
     assert to_unicode("\u1025\u102e", normalize=False) == "\u1025\u102e"
+
+
+def test_to_unicode_does_not_use_is_zawgyi_and_does_not_mangle_shan():
+    """Regression test for the fix: is_zawgyi() itself still flags this
+    real Shan text (documented, unchanged false-positive), but
+    to_unicode() must not, since it no longer branches on is_zawgyi()."""
+    assert is_zawgyi(SHAN_SAMPLE)  # unchanged legacy heuristic, still wrong here
+    assert to_unicode(SHAN_SAMPLE) == SHAN_SAMPLE  # but to_unicode() is fixed
+
+
+def test_to_unicode_threshold_is_configurable():
+    # An unreachably high threshold means nothing ever converts.
+    assert to_unicode(ZAWGYI_SAMPLE, threshold=1.5) == ZAWGYI_SAMPLE
+    # A threshold below 0 means everything "converts" (even non-Zawgyi
+    # text runs through zg2uni, which is mostly a no-op on real Unicode).
+    assert to_unicode(ZAWGYI_SAMPLE, threshold=-1.0) == UNICODE_SAMPLE
+
+
+def test_default_zawgyi_threshold_is_above_half():
+    # The asymmetry (false positive = data loss, false negative =
+    # recoverable) is the documented reason the default isn't 0.5.
+    assert DEFAULT_ZAWGYI_THRESHOLD > 0.5
 
 
 def test_type_validation():
