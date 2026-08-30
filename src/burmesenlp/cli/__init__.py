@@ -19,6 +19,7 @@ import json
 import sys
 from typing import List, Optional
 
+from .. import __version__
 from ..lexicon import LexiconError
 from ..pipeline import BurmeseNLP
 from ..zawgyi import to_unicode, uni2zg, zg2uni
@@ -58,6 +59,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         description="Myanmar (Burmese) text preprocessing: syllable/word/"
         "sentence segmentation, POS tagging, and Zawgyi/Unicode conversion.",
     )
+    parser.add_argument("--version", action="version", version=f"burmesenlp {__version__}")
     parser.add_argument(
         "text", nargs="*", help="Myanmar text (reads stdin when omitted)"
     )

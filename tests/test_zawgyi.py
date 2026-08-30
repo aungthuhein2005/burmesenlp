@@ -98,3 +98,12 @@ def test_cli_to_unicode_json(capsys):
     rc = cli.main(["--mode", "to-unicode", "--json", ZAWGYI_SAMPLE])
     assert rc == 0
     assert json.loads(capsys.readouterr().out) == UNICODE_SAMPLE
+
+
+def test_cli_top_level_version_flag(capsys):
+    from burmesenlp import __version__
+
+    with pytest.raises(SystemExit) as exc_info:
+        cli.main(["--version"])
+    assert exc_info.value.code == 0
+    assert capsys.readouterr().out.strip() == f"burmesenlp {__version__}"
