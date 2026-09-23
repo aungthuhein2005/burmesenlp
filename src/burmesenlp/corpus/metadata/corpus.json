@@ -59,15 +59,6 @@
       "role": "lookup",
       "used_by": ["GazetteerManager"],
       "notes": "String-array entity lists + holidays objects; not auto-run in process()"
-    },
-    {
-      "name": "corpus-scaffolds",
-      "path": "corpus/{ner,sentiment,names,dictionaries,syllables,...}",
-      "version": "0.0.0",
-      "license": "Apache-2.0",
-      "role": "placeholder",
-      "used_by": [],
-      "notes": "Layout reserved for later versions; not part of the V1 public API"
     }
   ]
 }

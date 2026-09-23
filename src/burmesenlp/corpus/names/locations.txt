@@ -1,2 +1,0 @@
-# location names, one per line
-
