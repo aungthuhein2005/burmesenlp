@@ -15,6 +15,7 @@ Public API (stable surface — use these from application code):
     syllable_segment / Token
     is_known / suggest / correct_words -- spell-checking over the
         bundled lexicon (opt-in, operates on already-segmented words)
+    romanize -- BGN/PCGN Burmese-to-Latin romanization (opt-in)
 """
 
 from .chunking import (
@@ -39,6 +40,7 @@ from .spellcheck import correct_words, is_known, suggest
 from .tag import pos_tag
 from .tokenize import sentence_tokenize, syllable_tokenize, word_tokenize
 from .tokenize.syllable import Token, syllable_segment
+from .transliterate import romanize
 from .zawgyi import (
     ZawgyiReport,
     convert_with_report,
@@ -94,5 +96,6 @@ __all__ = [
     "is_known",
     "suggest",
     "correct_words",
+    "romanize",
     "__version__",
 ]

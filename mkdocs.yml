@@ -139,4 +139,5 @@ nav:
       - Evaluation (bench): developer-guide/bench.md
       - CLI internals: developer-guide/cli.md
       - Spell-checking: developer-guide/spellcheck.md
+      - Romanization (BGN/PCGN): developer-guide/transliterate.md
   - References: references.md

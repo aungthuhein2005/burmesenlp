@@ -5,3 +5,4 @@
 - [Evaluation (burmesenlp bench)](bench.md)
 - [CLI internals: encoding, file handling, and known limits](cli.md)
 - [Spell-checking](spellcheck.md)
+- [Romanization (BGN/PCGN)](transliterate.md)

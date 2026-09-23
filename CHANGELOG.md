@@ -43,6 +43,25 @@ Keep `__version__` in `src/burmesenlp/__init__.py`, the `version` field in
   alphabetically (no frequency data in the lexicon yet) -- a known v1
   limitation, documented rather than hidden. See
   [`docs/developer-guide/spellcheck.md`](docs/developer-guide/spellcheck.md).
+- `burmesenlp.transliterate.romanize()`: Burmese-to-Latin romanization
+  using BGN/PCGN (the 1970 US/UK-agreed, tone-dropping, place-name-
+  oriented system -- not MLC's own MLCTS standard). Built from the
+  primary source PDF, read directly, not a paraphrase; verified against
+  the source's own worked examples (မဒမ->madama, အက->aga, ကလိ->kali,
+  သာငယ်->thangè, အိုဘဲ့->obè, အပ်->at, သဒ္ဓ->thadda) and independently
+  against the well-known place names ရန်ကုန်->Yangon and
+  ပြင်ဦးလွင်->Pyin Oo Lwin. Measured (not assumed) on the bundled
+  lexicon: 99.83% of ~24k words romanize completely, with the residual
+  0.17% being punctuation-like symbols outside BGN/PCGN's scope, two
+  already-documented `normalize()` Contraction words, and a few rare
+  unverified edge cases -- see
+  [`docs/developer-guide/transliterate.md`](docs/developer-guide/transliterate.md)
+  for the full list of what this v1 deliberately does not attempt, and
+  why. Required extracting `canonical_order()`'s cluster-splitting loop
+  into a shared internal `_iter_clusters()` parser first (pure
+  refactor -- full existing test suite confirmed byte-identical
+  `canonical_order()` behavior before any romanization code was
+  written on top of it).
 
 ## [1.2.0] - 2026-08-30
 
