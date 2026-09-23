@@ -11,11 +11,27 @@ logger = logging.getLogger(__name__)
 # Zero-width characters that break the segmentation regexes.
 _ZERO_WIDTH_TABLE = dict.fromkeys(map(ord, "\u200b\u200c\u200d\u2060\ufeff"), None)
 
-# Heuristic only: sequences that are common in Zawgyi-encoded text but
-# impossible (or vanishingly rare) in well-formed Unicode Burmese:
-#   - code points U+105A / U+1060-U+1097 reused by Zawgyi for glyph variants
-#   - vowel-e (U+1031) or medial-ya (U+103B) appearing before any base letter
-#   - doubled vowel-e or doubled asat
+# Heuristic only, and measurably wrong on minority-language text -- NOT
+# "vanishingly rare in well-formed Unicode Burmese" as earlier wording
+# here claimed:
+#   - code points U+105A / U+1060-U+1097 reused by Zawgyi for glyph
+#     variants are ALSO the Unicode block for Shan/Mon/Kayah/Karen/Rumai
+#     Palaung letters -- see burmesenlp.zawgyi.zawgyi's module docstring
+#     for why no narrower range can separate the two (the same
+#     codepoints are genuinely used both ways; only authorial intent
+#     distinguishes them, not the codepoint).
+#   - vowel-e (U+1031) or medial-ya (U+103B) appearing before any base
+#     letter, and doubled vowel-e / doubled asat, are ALSO common enough
+#     in genuine Shan/Mon text to misfire on their own: dropping just the
+#     codepoint-range clause above still leaves ~59% Shan / ~45% Mon
+#     false-positive rates from these three alone (measured on the same
+#     Wikipedia samples, paragraph-level).
+# Identical pattern to burmesenlp.zawgyi.zawgyi's _ZAWGYI_ORDER (confirmed
+# via .pattern ==), but an independent copy, not shared code. This
+# function is advisory only (gates a log line here in normalize(), which
+# runs on every word_tokenize()/syllable_tokenize()/process() call) --
+# unlike is_zawgyi(), nothing branches on it, which is why the fix here
+# is being decided separately.
 _ZAWGYI_HINTS = re.compile(
     "[\u105a\u1060-\u1097]"
     "|(?:^|[^\u1000-\u1021\u103a-\u103f])[\u1031\u103b]"
@@ -27,9 +43,18 @@ _ZAWGYI_HINTS = re.compile(
 def looks_like_zawgyi(text: str) -> bool:
     """Heuristically detect Zawgyi-encoded text.
 
-    This is a lightweight rule-based check, not a trained detector.  Use a
-    dedicated converter (e.g. ICU transliteration, myanmar-tools) for
-    authoritative detection and conversion.
+    This is a lightweight rule-based check, not a trained detector, and
+    it is measurably wrong on minority-language text: measured
+    false-positive rate on real Wikipedia text (paragraph-level) is
+    **Shan ~97.5% (119/122), Mon ~72% (283/393)**. See ``_ZAWGYI_HINTS``
+    above for why no cheap rewrite of this pattern fixes that (dropping
+    just the codepoint-range clause still leaves ~59%/~45%). This
+    function only gates a warning in ``normalize()`` -- nothing branches
+    on it -- so the fix under consideration is different from
+    ``is_zawgyi()``'s (see ``burmesenlp.zawgyi.zawgyi``, which DOES
+    branch on its equivalent check and has been changed accordingly).
+    For a calibrated, non-heuristic answer, use
+    :func:`burmesenlp.zawgyi.detector.get_zawgyi_probability`.
     """
     return bool(_ZAWGYI_HINTS.search(text))
 
@@ -58,8 +83,14 @@ def normalize(text: str, *, warn_zawgyi: bool = True) -> str:
         return ""
     if warn_zawgyi and looks_like_zawgyi(text):
         logger.warning(
-            "Input looks like Zawgyi-encoded text; segmentation results "
-            "will be unreliable. Convert to Unicode first."
+            "Input triggered a Zawgyi heuristic that also fires on Shan, "
+            "Mon, Kayah, Karen, and Rumai Palaung text -- this check cannot "
+            "tell those apart from Zawgyi. If this is genuinely Zawgyi, "
+            "convert it first (zg2uni()/to_unicode()); if it's one of "
+            "those other languages, segmentation results may still be "
+            "unreliable but no conversion is needed. For a calibrated "
+            "answer instead of this heuristic, use "
+            "burmesenlp.zawgyi.get_zawgyi_probability()."
         )
     text = text.translate(_ZERO_WIDTH_TABLE)
     return unicodedata.normalize("NFC", text)

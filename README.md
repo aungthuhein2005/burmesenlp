@@ -1,25 +1,34 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/aungthuhein2005/burmesenlp/main/docs/images/logo.png" alt="BurmeseNLP" width="180" />
+  <img src="https://raw.githubusercontent.com/aungthuhein2005/burmesenlp/main/docs/images/logo.png" alt="BurmeseNLP" width="140" />
 </p>
 
-# BurmeseNLP
+<h1 align="center">BurmeseNLP</h1>
 
-**BurmeseNLP** (`burmesenlp`) is an open-source Python library for rule-based
-Myanmar (Burmese) natural language processing.
+<p align="center">
+  <strong>Open-source, rule-based Myanmar (Burmese) NLP preprocessing.</strong><br />
+  Normalization, Zawgyi ↔ Unicode conversion, syllable / word / sentence
+  segmentation, POS tagging, phrase chunking, gazetteer NER, and corpus
+  export — dependency-light, no model download required.
+</p>
 
-Version **1.0** focuses on preprocessing: normalization, Zawgyi ↔ Unicode
-**APIs**, syllable / word / sentence segmentation, multi-word expressions
-(BMWE), lexicon management, rule-based POS tagging, phrase chunking,
-gazetteer NER, clause parsing, and corpus export.
-It is fast, dependency-light, and designed as the foundation for future
-hybrid and machine-learning engines.
+<p align="center">
+  <a href="https://pypi.org/project/burmesenlp/"><img src="https://img.shields.io/pypi/v/burmesenlp?color=blue&label=PyPI" alt="PyPI version"></a>
+  <a href="https://pypi.org/project/burmesenlp/"><img src="https://img.shields.io/pypi/pyversions/burmesenlp" alt="Python versions"></a>
+  <a href="https://huggingface.co/aungthuhein-dev/burmese-pos-xlmr"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Model-burmese--pos--xlmr-yellow" alt="HuggingFace model"></a>
+  <a href="https://aungthuhein2005.github.io/burmesenlp/"><img src="https://img.shields.io/badge/docs-mkdocs-blue" alt="Docs"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/pypi/l/burmesenlp" alt="License"></a>
+</p>
+
+<p align="center">
+  <a href="https://aungthuhein2005.github.io/burmesenlp/"><b>Docs</b></a> ·
+  <a href="docs/">Docs source</a> ·
+  <a href="CHANGELOG.md">Changelog</a> ·
+  <a href="CONTRIBUTING.md">Contributing</a>
+</p>
 
 ```bash
 pip install burmesenlp
 ```
-
-**Docs:** [https://aungthuhein2005.github.io/burmesenlp/](https://aungthuhein2005.github.io/burmesenlp/)
-(source in [`docs/`](docs/); build with `pip install -e ".[docs]" && mkdocs serve`)
 
 ```python
 from burmesenlp import process
@@ -28,8 +37,6 @@ doc = process("ကျွန်တော်ကျောင်းသို့သ�
 print(doc["words"])
 # ['ကျွန်တော်', 'ကျောင်း', 'သို့', 'သွား', 'သည်', '။']
 ```
-
-No dictionary path or model download is required.
 
 ## Features
 

@@ -23,6 +23,13 @@ from burmesenlp.bench.corpora import (
     _parse_line_pipe,
 )
 from burmesenlp.bench.diff import diff_spans, load_external_segmentation
+from burmesenlp.bench.freeze import (
+    load_or_create_snapshot,
+    load_snapshot,
+    save_snapshot,
+    snapshot_vocabulary,
+)
+from burmesenlp.bench.holdout import read_log, record_run
 
 
 def test_word_boundaries_basic():
@@ -347,3 +354,61 @@ def test_load_alt_and_score_real_corpus():
     assert 0.0 <= counts.precision <= 1.0
     assert 0.0 <= counts.recall <= 1.0
     assert len(detail) <= 50
+
+
+def test_snapshot_vocabulary_is_canonicalized():
+    from burmesenlp.lexicon import Lexicon
+
+    lex = Lexicon(entries={"\u1000\u103b\u103d": ["NOUN"]})  # ka+ya+wa medial order
+    vocab = snapshot_vocabulary(lex)
+    # a swapped-medial-order variant of the same word must land on the
+    # same canonical form as what's actually in the lexicon
+    from burmesenlp.normalize import canonical_order
+
+    assert canonical_order("\u1000\u103d\u103b") in vocab
+
+
+def test_save_and_load_snapshot_roundtrip(tmp_path):
+    path = tmp_path / "snap.json"
+    vocab = frozenset({"\u1000\u1001", "\u1002"})
+    save_snapshot(path, vocab)
+    loaded = load_snapshot(path)
+    assert loaded == vocab
+
+
+def test_load_or_create_snapshot_creates_once_then_reuses(tmp_path):
+    from burmesenlp.lexicon import Lexicon
+
+    path = tmp_path / "snap.json"
+    lex_before = Lexicon(entries={"\u1000": ["NOUN"]})
+    vocab1, created1 = load_or_create_snapshot(path, lex_before)
+    assert created1 is True
+    assert "\u1000" in vocab1
+
+    # simulate "expansion": a lexicon with a NEW word added
+    lex_after = Lexicon(entries={"\u1000": ["NOUN"], "\u1001": ["NOUN"]})
+    vocab2, created2 = load_or_create_snapshot(path, lex_after)
+    assert created2 is False
+    # the snapshot is frozen at the pre-expansion vocabulary, so the new
+    # word must NOT appear even though lex_after already has it
+    assert vocab2 == vocab1
+    assert "\u1001" not in vocab2
+
+
+def test_holdout_log_empty_by_default(tmp_path):
+    assert read_log(cache_dir=tmp_path) == []
+
+
+def test_holdout_log_records_and_persists_entries(tmp_path):
+    record_run("first check", cache_dir=tmp_path)
+    log = record_run("second check", cache_dir=tmp_path)
+    assert len(log) == 2
+    assert log[0]["reason"] == "first check"
+    assert log[1]["reason"] == "second check"
+    # reading independently returns the same persisted entries
+    assert read_log(cache_dir=tmp_path) == log
+
+
+def test_holdout_log_default_reason_when_none_given(tmp_path):
+    log = record_run(None, cache_dir=tmp_path)
+    assert log[0]["reason"] == "(no reason given)"

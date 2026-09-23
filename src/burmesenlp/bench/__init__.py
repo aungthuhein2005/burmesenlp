@@ -46,6 +46,9 @@ from __future__ import annotations
 
 from .boundaries import BoundaryCounts, score_corpus, score_corpus_stratified
 from .corpora import ALT_LICENSE, MYPOS_LICENSE, GoldSentence, collapse_stats, load_alt, load_mypos
+from .freeze import load_or_create_snapshot, load_snapshot, save_snapshot, snapshot_vocabulary
+from .holdout import read_log as read_alt_holdout_log
+from .holdout import record_run as record_alt_run
 
 __all__ = [
     "ALT_LICENSE",
@@ -55,6 +58,12 @@ __all__ = [
     "collapse_stats",
     "load_alt",
     "load_mypos",
+    "load_or_create_snapshot",
+    "load_snapshot",
+    "read_alt_holdout_log",
+    "record_alt_run",
+    "save_snapshot",
     "score_corpus",
     "score_corpus_stratified",
+    "snapshot_vocabulary",
 ]

@@ -137,4 +137,5 @@ nav:
       - Contributing: developer-guide/contributing.md
       - Building docs: developer-guide/docs.md
       - Evaluation (bench): developer-guide/bench.md
+      - CLI internals: developer-guide/cli.md
   - References: references.md

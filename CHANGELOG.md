@@ -10,6 +10,20 @@ Keep `__version__` in `src/burmesenlp/__init__.py`, the `version` field in
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-08-30
+
+Fixes a Windows-only bug where the CLI silently mis-decoded piped Myanmar
+text as the console's legacy code page instead of UTF-8, contradicting
+its own documented UTF-8-safety claim. Also adds an opt-in canonical
+mark-order normalizer, a boundary-level evaluation harness
+(`burmesenlp bench`) with the toolkit's first published,
+methodology-declared F1 numbers, an auditable Zawgyi repair log backed
+by a calibrated bigram detector, a token-fertility profiler across four
+real tokenizers, and a correctness fix to `to_unicode()` that stops it
+from corrupting genuine Shan/Mon/Karen text. No change to `normalize()`'s
+or `process()`'s default output — every new capability here is opt-in or
+a separate entry point.
+
 ### Added
 
 - `canonical_order()` in `burmesenlp.normalize`: reorders Myanmar
@@ -20,7 +34,11 @@ Keep `__version__` in `src/burmesenlp/__init__.py`, the `version` field in
   Burmese Wikipedia) found this affects 4.5-5.4% of token occurrences.
   Recognizes Unicode's own documented "Contractions" sequences (e.g.
   ယောက်ျား "man/husband") and passes them through unchanged rather than
-  sorting them. Opt-in; not applied inside `normalize()` or `process()`.
+  sorting them. Opt-in; not applied inside `normalize()` or `process()` --
+  `normalize()`'s default output, and every character offset returned by
+  `Document`/`sentence_segment_with_positions()`/etc. in v1.1.0 code, is
+  unchanged. Existing offsets stay valid after upgrading; nothing breaks
+  unless a caller explicitly opts in by calling `canonical_order()`.
 - `burmesenlp bench`: boundary-level precision/recall/F1 evaluation
   harness for word segmentation against gold corpora (myPOS v3.0 and the
   Myanmar ALT treebank; both CC BY-NC-SA, fetched at runtime, never
@@ -44,6 +62,28 @@ Keep `__version__` in `src/burmesenlp/__init__.py`, the `version` field in
   corpus and word scheme, not implicated in the contamination): F1
   **0.9042** (P=0.8821, R=0.9274, n=20106). See
   `docs/developer-guide/bench.md`.
+
+  **Known issue, not resolved in this release**: the bundled lexicon's
+  word-form list is derived from myPOS (CC BY-NC-SA), per the
+  contamination finding above -- whether that constrains shipping it
+  inside this Apache-2.0 wheel is an open question, currently awaiting a
+  reply from the corpus author. Flagging it here so it's tracked, not
+  resolving it here.
+
+  `bench` also adds `--freeze-strata PATH`: snapshots the lexicon's
+  vocabulary before a lexicon/gazetteer expansion so OOV-stratum
+  before/after comparisons score the same token set both times, not just
+  whichever tokens happen to still be OOV after the expansion (a naive
+  comparison otherwise measures vocabulary composition, not accuracy).
+  And `--corpus alt` now refuses to run without `--final`: ALT is the
+  project's one genuinely independent (non-myPOS-contaminated)
+  measurement, so it's held out from iteration and only spent on a
+  measurement meant to be reported; every `--final` run is appended to a
+  persistent, timestamped log so repeat use is visible rather than
+  silently possible. Both documented in `docs/developer-guide/bench.md`,
+  including the separately-important finding that `GazetteerManager`
+  never feeds into segmentation -- a gazetteer-only expansion will always
+  read as a flat 0.0000 `bench` change regardless of data quality.
 
 - `burmesenlp.zawgyi.convert_with_report()`: auditable Zawgyi -> Unicode
   conversion. Unlike `to_unicode()`/`zg2uni()` (both unchanged, still
@@ -203,6 +243,101 @@ Keep `__version__` in `src/burmesenlp/__init__.py`, the `version` field in
 
   Full distributions in `research/token-fertility/fertility_results.json`;
   reproducible via `research/token-fertility/run_corpus_scale.py`.
+
+### Fixed
+
+- **CLI stdin was not read as UTF-8 on Windows.** `sys.stdin` defaulted
+  to the console's legacy code page (`cp1252` observed), which silently
+  mis-decodes Myanmar text (mojibake) instead of raising -- piping a
+  real Myanmar file into the CLI produced no error and no warning, just
+  corrupted input through the entire pipeline, while the module
+  docstring claimed UTF-8 safety on every platform including Windows.
+  Same failure shape as the `is_zawgyi()`/`looks_like_zawgyi()` bugs
+  above: wrong output, no signal, and a documented promise that
+  encouraged trusting the broken path instead of suspecting it. Fixed by
+  reconfiguring stdin alongside stdout/stderr (previously only the
+  latter two were forced to UTF-8); the docstring now describes what is
+  actually guaranteed. Regression-tested via a real subprocess with a
+  real piped stdin and every UTF-8-forcing environment variable
+  stripped, since an in-process substitute can't reproduce a *default*
+  codec choice -- confirmed this test fails without the fix, not just
+  written to pass. Audited every other `open()`/`read_text()`/
+  `write_text()` call in the package for the same class of bug: all
+  already declare an explicit encoding, or are deliberately binary
+  (the vendored Zawgyi detector model, MWE cache content-fingerprint
+  hashing) where no text encoding applies. Nothing else found. See
+  `docs/developer-guide/cli.md`.
+
+- `to_unicode()` no longer uses `is_zawgyi()` internally -- it now
+  branches on `get_zawgyi_probability()` (threshold 0.9, see
+  `DEFAULT_ZAWGYI_THRESHOLD`'s docstring for why not 0.5: a false
+  positive here runs the full zg2uni cascade over real Shan/Mon text
+  with no recovery path, while a false negative just leaves
+  genuinely-Zawgyi text unconverted -- recoverable, so the asymmetry
+  favors erring high). `is_zawgyi()` itself is UNCHANGED (still
+  exported, still has the same false-positive rate) -- kept for
+  callers relying on its exact boolean semantics; only what
+  `to_unicode()` consults internally changed, sidestepping the
+  breaking-change question rather than resolving it by fiat.
+
+  Root cause, confirmed not assumed: `is_zawgyi()`'s codepoint-range
+  signal is the same U+1060-1097 block as Shan/Mon/Kayah/Karen/Rumai
+  Palaung letters (the bug already found and fixed in the new
+  `convert_with_report()` path, but never fixed in `is_zawgyi()`
+  itself -- this session's own earlier framing had that backwards
+  for several turns). Measured false-positive rate, paragraph-level,
+  real Wikipedia text: **Shan ~100% (119/122), Mon ~72% (283/393)**,
+  100% attributable to the range signal for Shan, ~87.6% for Mon --
+  the remaining ~12% of Mon's false positives (35 cases) come from
+  the heuristic's other two signals (virama-not-followed-by-consonant
+  and vowel-e/medial-ya visual-order checks) misfiring on genuine Mon
+  orthography, independent of the range collision -- two bugs
+  compounding for Mon, not one. Measured, not assumed, whether the
+  detector actually clears those 35: **all 35/35 score 0.0**, cleared
+  at both the 0.5 default and the chosen 0.9 threshold.
+
+  Threshold calibration: 0.9 sits above the single highest score
+  found on any confirmed-non-Zawgyi sample (a Mon paragraph, 0.757;
+  every Shan sample scored ~1e-5 or below), while 6 of a small
+  confirmed-Zawgyi calibration set (**n=8**, Rabbit-Converter's own
+  sample.json -- not a population-scale sample, stated explicitly so
+  1-in-8 isn't read as a measured 12.5% false-negative rate) score a
+  clean 1.0. Cost disclosed rather than hidden: 1 of those 8 sentences
+  (score 0.538) becomes a false negative at 0.9 that wouldn't have been
+  at 0.5 -- accepted deliberately per the stated asymmetry, not
+  overlooked, but only representative of this one small sample.
+  `threshold` is a keyword parameter on `to_unicode()` for callers who
+  want a different trade-off.
+
+  Structural finding, recorded in both `zawgyi.py`'s and
+  `normalize.py`'s module comments so it outlives this changelog
+  entry: no codepoint-range narrowing can separate "genuine Zawgyi
+  glyph reuse" from "genuine minority-language letters" in this
+  block, because they are frequently the identical codepoint --
+  zg2uni's own rule 5 and its 14 Karen-range rules use the same
+  codepoints Shan/Karen text uses natively. Authorial intent, not the
+  codepoint, is what distinguishes them, which is the whole argument
+  for context-sensitive (bigram) detection over any range-based fix.
+
+  `looks_like_zawgyi()` (`burmesenlp.normalize`) is a separate, still NOT
+  fixed instance of the same range bug -- it only gates a
+  `logger.warning()` inside `normalize()` (nothing branches on it), but
+  `normalize()` runs on every `word_tokenize()`/`syllable_tokenize()`/
+  `process()` call, so routing it through the detector would add real
+  per-call cost for a log line. Measured before deciding: dropping just
+  its codepoint-range clause and keeping only the structural signals
+  (doubled vowel-e, doubled asat, vowel-e/medial-ya before a consonant)
+  still leaves ~59% Shan / ~45% Mon false-positive rates -- those signals
+  are independently miscalibrated for Shan/Mon text, so range-narrowing
+  alone was never going to be enough. Detection logic is therefore
+  UNCHANGED and still fires at the same measured rate; what changed is
+  the warning's own claim -- it no longer asserts the input "looks like
+  Zawgyi-encoded text," it names Shan/Mon/Kayah/Karen/Rumai Palaung as
+  equally likely explanations this heuristic cannot distinguish, and
+  points at `get_zawgyi_probability()` for a calibrated answer. A
+  disclosed-as-noisy warning is defensible; a confidently wrong one is
+  not -- this closes the second half of that gap, not the false-positive
+  rate itself, which remains a known, documented limitation.
 
 ## [1.1.0] - 2026-08-27
 
