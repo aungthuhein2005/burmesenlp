@@ -178,7 +178,12 @@ Version 1 is **rule-based only**:
 - No SentencePiece / BPE / EvoPiece tokenizers
 - NER is **gazetteer / list-based only** (not statistical or neural); coverage
   is limited to bundled entity lists, and short place names need locative cues
-- No sentiment analysis or spell checking
+- No sentiment analysis. Spell-checking (`is_known` / `suggest` /
+  `correct_words`) is dictionary-based against the bundled ~24k-word
+  lexicon only, no ML — measured 8.50% of real Wikipedia
+  `word_tokenize()` tokens fall outside it (see
+  [spell-checking docs](https://aungthuhein2005.github.io/burmesenlp/developer-guide/spellcheck/)),
+  so treat suggestions as candidates for review, not ground truth
 - Word segmentation quality depends on lexicon coverage; longest-match may
   prefer compounds present in the dictionary
 - POS and chunk rules are heuristic — expect residual tagging/chunk errors

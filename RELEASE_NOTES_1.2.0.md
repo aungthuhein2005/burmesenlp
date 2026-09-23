@@ -3,7 +3,8 @@
 This release adds an opt-in fix for a Myanmar text-encoding problem NFC
 can't solve, a real evaluation harness with the first published accuracy
 numbers for this toolkit, a safer Zawgyi-to-Unicode converter, a
-token-cost profiler for LLM users, and a Windows encoding bug fix.
+token-cost profiler for LLM users, dictionary-based spell-checking,
+Burmese-to-Latin romanization, and a Windows encoding bug fix.
 **Nothing in `normalize()`'s or `process()`'s default behavior changes** —
 every new capability here is opt-in or lives behind a separate function,
 so upgrading is safe for existing code.
@@ -97,7 +98,40 @@ fix next, `--freeze-strata` lets you measure a dictionary/gazetteer
 expansion honestly (against a frozen pre-expansion baseline rather than
 a moving target), and the ALT corpus is enforced as held-out (requires
 `--final`, logs every use) so it stays a trustworthy, un-tuned-against
-measurement rather than eroding the same way the myPOS number did.
+measurement rather than eroding the same way the myPOS number did. A new
+`--export-text` flag writes the gold-corpus sentences in exactly the
+format `--diff` expects, so you can run your own external segmenter
+against them and compare it to `word_tokenize()` directly. We used it to
+compare against myWord (a real, independently-trained open-source
+Burmese segmenter): the two came out nearly tied on the same 500-sentence
+sample (burmesenlp F1 0.9492 vs. myWord F1 0.9513), with opposite error
+patterns — burmesenlp under-splits slightly, myWord over-splits slightly.
+
+### Spell-checking (`is_known()` / `suggest()` / `correct_words()`)
+
+A new, dictionary-based spell-checker over the bundled ~24k-word lexicon
+— no machine learning, no new dependency. It operates on already-
+segmented words (the output of `word_tokenize()`), since Burmese has no
+spaces to spell-check between. We measured its real-world false-positive
+rate rather than assuming one: on real Burmese Wikipedia text, **8.50%
+of words fall outside the bundled dictionary** and would be flagged as
+possible typos — spot-checking shows numbers, wiki formatting, and
+foreign names make up a visible share of that, so treat 8.50% as an
+upper bound, and treat every suggestion as something for a human to
+review, not an automatic correction.
+
+### Burmese-to-Latin romanization (`romanize()`)
+
+A new `romanize()` function converts Burmese script to Latin letters
+using BGN/PCGN, the standard place-name-oriented system used
+internationally (e.g. by gazetteers and mapping agencies) — not the
+Myanmar Language Commission's own MLCTS standard, and it drops tone, by
+that system's own design. Built directly from the primary 1970
+US/UK agreement document, and checked against the document's own worked
+examples plus well-known real place names (ရန်ကုန် → "yangôn", i.e.
+Yangon). Measured on the bundled dictionary: **99.83% of words romanize
+completely**; anything this version can't confidently romanize is left
+as the original Myanmar text rather than guessed at.
 
 ### Token-fertility profiler (`burmesenlp fertility`, optional extra)
 

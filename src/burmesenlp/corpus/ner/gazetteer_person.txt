@@ -1,2 +1,0 @@
-# person gazetteer, one per line
-

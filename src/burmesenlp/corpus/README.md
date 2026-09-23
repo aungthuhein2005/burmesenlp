@@ -37,14 +37,25 @@ Phrase grammar:
 - `phrase_markers.yml` — boundary markers
 - `phrase_exceptions.yml` — greetings / never-split / specials
 
-## Placeholders (not V1 features)
+## Removed: empty placeholder scaffolds
 
-Directories such as `ner/`, `sentiment/`, `names/`, `dictionaries/`,
-`syllables/`, and related stub files are **scaffolds for later versions**.
-They are **not** loaded by `BurmeseNLP.process()` and must not be documented
-as working V1 capabilities.
+`ner/`, `sentiment/`, `spell/`, `embeddings/`, `tokenizer/`, `names/`,
+`syllables/`, `pos/`, and `normalization/` used to exist here as reserved
+layout for later hybrid/ML versions -- every file in them was either
+0 bytes or a `{}`/comment-only stub, and nothing in the codebase loaded
+them. Removed rather than left dangling; see git history if that layout
+is needed again. `burmesenlp.models`'s `_PLANNED` dict is the pattern to
+follow instead for reserving a future backend name without an empty
+on-disk footprint.
+
+`dictionaries/words.txt` and `dictionaries/stopwords.txt` remain but are
+**not currently referenced by any pipeline code either** (checked
+directly: `burmesenlp.lexicon` uses its own separate
+`lexicon/data/*.json`, not this directory) -- flagged, not removed here,
+since unlike the stubs above these are real, non-trivial data (1.4MB)
+and deserve their own decision rather than being swept in with the
+empty-file cleanup.
 
 ## Later versions
 
 Hybrid / ML engines may load resources from here (or via `burmesenlp.models`).
-Until then, treat unfinished trees as reserved layout only.

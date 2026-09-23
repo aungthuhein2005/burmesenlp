@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import re
 import unicodedata
+from typing import Iterator, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -150,6 +151,41 @@ _CONTRACTION_SEQUENCES = (
 )
 
 
+class _Cluster:
+    """One unit produced by :func:`_iter_clusters`.
+
+    ``kind`` is one of:
+      - ``"syllable"``: a real cluster base -- ``base`` (and optionally
+        ``stacked``, the ``<virama, consonant>`` pair below it) plus
+        ``marks`` (the reorderable combining marks that followed, in
+        their *original*, not-yet-sorted order).
+      - ``"contraction"`` / ``"kinzi"`` / ``"stray"``: not a base+marks
+        cluster at all -- ``raw`` is the exact span to emit unchanged
+        (a documented Contractions sequence, an atomic kinzi unit, or a
+        single character with no cluster base, e.g. a stray combining
+        mark, punctuation, digit, or non-Myanmar text).
+
+    Internal to :mod:`burmesenlp.normalize`; :func:`canonical_order` and
+    :mod:`burmesenlp.transliterate` are its only consumers.
+    """
+
+    __slots__ = ("kind", "raw", "base", "stacked", "marks")
+
+    def __init__(
+        self,
+        kind: str,
+        raw: str = "",
+        base: str = "",
+        stacked: str = "",
+        marks: Tuple[str, ...] = (),
+    ) -> None:
+        self.kind = kind
+        self.raw = raw
+        self.base = base
+        self.stacked = stacked
+        self.marks = marks
+
+
 def _is_cluster_base(ch: str) -> bool:
     """True for anything that can start a new syllable cluster.
 
@@ -160,6 +196,62 @@ def _is_cluster_base(ch: str) -> bool:
     run over mixed running text, not just isolated Myanmar syllables.
     """
     return ch not in _ORDERABLE_MARKS and ch != _VIRAMA
+
+
+def _iter_clusters(text: str) -> Iterator[_Cluster]:
+    """Split *text* into syllable clusters (shared by :func:`canonical_order`
+    and :mod:`burmesenlp.transliterate`).
+
+    Recognizes, in this order: a documented "Contractions" sequence (see
+    ``_CONTRACTION_SEQUENCES``), an atomic kinzi unit
+    (``<U+1004, U+103A, U+1039>``), a stray character with no cluster
+    base (a combining mark with nothing to attach to, punctuation,
+    digits, non-Myanmar text), or a real syllable: one cluster-base
+    character, an optional stacked/subjoined consonant
+    (``<U+1039, consonant>``), then any run of reorderable combining
+    marks (asat, medials, vowel signs, anusvara, dot below, visarga) in
+    their original, not-yet-sorted order.
+    """
+    if not text:
+        return
+    i = 0
+    n = len(text)
+    while i < n:
+        ch = text[i]
+
+        matched_contraction = next(
+            (seq for seq in _CONTRACTION_SEQUENCES if text.startswith(seq, i)),
+            None,
+        )
+        if matched_contraction is not None:
+            yield _Cluster("contraction", raw=matched_contraction)
+            i += len(matched_contraction)
+            continue
+
+        if ch == _KINZI_NGA and i + 3 <= n and set(text[i : i + 3]) == _KINZI_CHARS:
+            yield _Cluster("kinzi", raw=_KINZI_NGA + _ASAT + _VIRAMA)
+            i += 3
+            continue
+
+        if not _is_cluster_base(ch):
+            yield _Cluster("stray", raw=ch)  # stray mark with no base in this cluster
+            i += 1
+            continue
+
+        base = ch
+        i += 1
+
+        stacked = ""
+        if i + 1 < n and text[i] == _VIRAMA and _is_cluster_base(text[i + 1]):
+            stacked = _VIRAMA + text[i + 1]
+            i += 2
+
+        marks = []
+        while i < n and text[i] in _ORDERABLE_MARKS:
+            marks.append(text[i])
+            i += 1
+
+        yield _Cluster("syllable", base=base, stacked=stacked, marks=tuple(marks))
 
 
 def canonical_order(text: str) -> str:
@@ -186,44 +278,10 @@ def canonical_order(text: str) -> str:
     if not text:
         return text
     out = []
-    i = 0
-    n = len(text)
-    while i < n:
-        ch = text[i]
-
-        matched_contraction = next(
-            (seq for seq in _CONTRACTION_SEQUENCES if text.startswith(seq, i)),
-            None,
-        )
-        if matched_contraction is not None:
-            out.append(matched_contraction)
-            i += len(matched_contraction)
+    for cluster in _iter_clusters(text):
+        if cluster.kind != "syllable":
+            out.append(cluster.raw)
             continue
-
-        if ch == _KINZI_NGA and i + 3 <= n and set(text[i : i + 3]) == _KINZI_CHARS:
-            out.append(_KINZI_NGA + _ASAT + _VIRAMA)
-            i += 3
-            continue
-
-        if not _is_cluster_base(ch):
-            out.append(ch)  # stray mark with no base in this cluster
-            i += 1
-            continue
-
-        cluster = [ch]
-        i += 1
-
-        if i + 1 < n and text[i] == _VIRAMA and _is_cluster_base(text[i + 1]):
-            cluster.append(_VIRAMA + text[i + 1])
-            i += 2
-
-        marks = []
-        while i < n and text[i] in _ORDERABLE_MARKS:
-            marks.append(text[i])
-            i += 1
-        marks.sort(key=lambda c: _MARK_RANK[c])
-        cluster.extend(marks)
-
-        out.append("".join(cluster))
-
+        marks = sorted(cluster.marks, key=lambda c: _MARK_RANK[c])
+        out.append(cluster.base + cluster.stacked + "".join(marks))
     return "".join(out)

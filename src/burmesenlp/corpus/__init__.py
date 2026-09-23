@@ -1,8 +1,15 @@
-"""Bundled resource scaffold for burmesenlp (not used by the V1 pipeline).
+"""Bundled resource registry for burmesenlp (not used by the V1 pipeline).
 
-Layout is reserved for later hybrid / ML versions.  Empty or stub trees
-(``ner/``, ``sentiment/``, ``spell/``, ``embeddings/``, ``tokenizer/``, …)
-are placeholders — not public V1 features.
+Holds the general word list, stopwords, gazetteer lookup lists, idioms,
+and phrase-chunking grammar, addressable by name via
+:func:`resource_path`/:func:`load_lines`/:func:`load_json`.
+
+The empty placeholder trees reserved here for later hybrid/ML versions
+(``ner/``, ``sentiment/``, ``spell/``, ``embeddings/``, ``tokenizer/``,
+``names/``, ``syllables/``, ``pos/``, ``normalization/``) were removed --
+they shipped no content and nothing referenced them; see
+:mod:`burmesenlp.models` for the equivalent forward-looking registry
+pattern done right (a ``_PLANNED`` dict with no on-disk footprint).
 
 Production V1 linguistic data lives under ``burmesenlp.lexicon`` and
 ``burmesenlp.zawgyi``.  See ``corpus/README.md`` for details.

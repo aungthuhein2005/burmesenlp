@@ -10,21 +10,73 @@ Keep `__version__` in `src/burmesenlp/__init__.py`, the `version` field in
 
 ## [Unreleased]
 
-## [1.2.0] - 2026-08-30
+## [1.2.0] - 2026-09-24
 
 Fixes a Windows-only bug where the CLI silently mis-decoded piped Myanmar
 text as the console's legacy code page instead of UTF-8, contradicting
 its own documented UTF-8-safety claim. Also adds an opt-in canonical
 mark-order normalizer, a boundary-level evaluation harness
-(`burmesenlp bench`) with the toolkit's first published,
-methodology-declared F1 numbers, an auditable Zawgyi repair log backed
+(`burmesenlp bench`, including an external-segmenter comparison workflow
+and a real myWord benchmark), an auditable Zawgyi repair log backed
 by a calibrated bigram detector, a token-fertility profiler across four
-real tokenizers, and a correctness fix to `to_unicode()` that stops it
+real tokenizers, dictionary-based spell-checking, BGN/PCGN Burmese-to-
+Latin romanization, and a correctness fix to `to_unicode()` that stops it
 from corrupting genuine Shan/Mon/Karen text. No change to `normalize()`'s
 or `process()`'s default output — every new capability here is opt-in or
 a separate entry point.
 
 ### Added
+
+- `burmesenlp.spellcheck` (`is_known()` / `suggest()` / `correct_words()`):
+  dictionary spell-checking over already-segmented words, reusing the
+  bundled lexicon -- no new dependency or corpus. Candidate generation is
+  Norvig-style edit distance at the Unicode codepoint level (dropped/
+  swapped/wrong combining marks are the realistic Burmese typo shape);
+  both the query and lexicon entries are compared via `canonical_order()`
+  so a correctly mark-ordered word is never mistaken for a typo of
+  itself. Measured, not assumed: on 40 random Burmese Wikipedia articles,
+  8.50% of `word_tokenize()` tokens (553/6,506) fall outside the ~24k-word
+  lexicon and would be flagged as possible typos -- spot-checking shows
+  numerals, wiki markup, and foreign proper nouns make up a visible share
+  of that, so 8.50% is an upper bound on genuine vocabulary-coverage gaps,
+  not a precise error rate on ordinary prose. Ranking ties are broken
+  alphabetically (no frequency data in the lexicon yet) -- a known v1
+  limitation, documented rather than hidden. See
+  [`docs/developer-guide/spellcheck.md`](docs/developer-guide/spellcheck.md).
+- `burmesenlp.transliterate.romanize()`: Burmese-to-Latin romanization
+  using BGN/PCGN (the 1970 US/UK-agreed, tone-dropping, place-name-
+  oriented system -- not MLC's own MLCTS standard). Built from the
+  primary source PDF, read directly, not a paraphrase; verified against
+  the source's own worked examples (မဒမ->madama, အက->aga, ကလိ->kali,
+  သာငယ်->thangè, အိုဘဲ့->obè, အပ်->at, သဒ္ဓ->thadda) and independently
+  against the well-known place names ရန်ကုန်->Yangon and
+  ပြင်ဦးလွင်->Pyin Oo Lwin. Measured (not assumed) on the bundled
+  lexicon: 99.83% of ~24k words romanize completely, with the residual
+  0.17% being punctuation-like symbols outside BGN/PCGN's scope, two
+  already-documented `normalize()` Contraction words, and a few rare
+  unverified edge cases -- see
+  [`docs/developer-guide/transliterate.md`](docs/developer-guide/transliterate.md)
+  for the full list of what this v1 deliberately does not attempt, and
+  why. Required extracting `canonical_order()`'s cluster-splitting loop
+  into a shared internal `_iter_clusters()` parser first (pure
+  refactor -- full existing test suite confirmed byte-identical
+  `canonical_order()` behavior before any romanization code was
+  written on top of it).
+- `--export-text PATH` in `burmesenlp bench`: writes the gold corpus's
+  reconstructed reference sentences (one per line, in `--diff`'s exact
+  expected format) so an external segmenter's output can be scored against
+  them via the existing `--diff NAME=PATH` mechanism. `--corpus alt
+  --export-text` requires `--final`, same as scoring ALT directly, since
+  handing out ALT's sentences for external segmentation still spends the
+  held-out measurement. Used to run a real comparison against myWord
+  (MIT-licensed Viterbi word segmenter, `ye-kyaw-thu/myWord`) on 500 myPOS
+  v3.0 nopipe sentences: burmesenlp P=0.9850/R=0.9159/F1=0.9492 vs. myWord
+  P=0.9111/R=0.9952/F1=**0.9513** — a near-tie with opposite error profiles
+  (burmesenlp under-splits, myWord over-splits), notable because myWord's
+  dictionaries come from an independent corpus, not myPOS, so it does not
+  share burmesenlp's lexicon-derived home-turf advantage on this corpus.
+  See [`docs/developer-guide/bench.md`](docs/developer-guide/bench.md#--export-text-getting-a---diff-compatible-file-for-an-external-tool)
+  for the full workflow and numbers.
 
 - `canonical_order()` in `burmesenlp.normalize`: reorders Myanmar
   syllable-cluster marks (medials, vowel signs, asat) into a canonical

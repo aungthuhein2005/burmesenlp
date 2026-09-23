@@ -17,9 +17,14 @@ from burmesenlp.corpus.registry import corpus_root
 def test_list_resources_includes_bundled_entries():
     names = list_resources()
     assert "dictionaries/words" in names
-    assert "pos/tagset" in names
     assert "metadata/corpus" in names
-    assert len(names) >= 20
+    assert "gazetteers" in names
+    # Was >= 20 before the empty-placeholder-scaffold cleanup (ner/,
+    # sentiment/, spell/, embeddings/, tokenizer/, names/, syllables/,
+    # pos/, normalization/ -- every file in them was a 0-byte or
+    # `{}`-only stub, nothing loaded them). 9 real, non-stub resources
+    # remain; this asserts the real count, not a stale placeholder one.
+    assert len(names) == 9
 
 
 def test_resource_path_and_info():

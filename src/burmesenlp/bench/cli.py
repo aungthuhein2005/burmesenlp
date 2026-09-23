@@ -15,7 +15,7 @@ from ..normalize import canonical_order, normalize
 from ..pipeline import BurmeseNLP
 from ..tokenize.syllable import tokenize as syllable_tokenize
 from .audit import categorize, find_disagreements, sample_diverse
-from .boundaries import score_corpus, score_corpus_stratified
+from .boundaries import canonical_reference_text, score_corpus, score_corpus_stratified
 from .corpora import ALT_LICENSE, MYPOS_LICENSE, collapse_stats, load_alt, load_mypos
 from .diff import run_diff
 from .freeze import load_or_create_snapshot
@@ -89,6 +89,56 @@ def _header(
         "=" * 70,
     ]
     return "\n".join(lines)
+
+
+def _export_text(corpus: str, limit: Optional[int], path: str, final: bool, reason: Optional[str]) -> int:
+    """Write one reconstructed reference sentence per line to *path*, in
+    the exact order and exact string form `--diff` will later expect --
+    i.e. `canonical_reference_text(gold_words)` per sentence, the same
+    reconstruction `run_diff()` does internally before scoring. This lets
+    a caller run any external segmenter (e.g. myWord) against this file
+    and feed its output back via `--diff name=that_output.txt`, without
+    burmesenlp running third-party tool binaries itself (see diff.py's
+    module docstring for why that's out of scope).
+
+    Independent of `--scheme`: nopipe/pipe only differ in how gold words
+    are grouped into compounds, never in the underlying character
+    sequence, so the reconstructed reference text is identical either
+    way -- this always loads the (simpler) nopipe scheme internally.
+    """
+    if corpus == "alt":
+        if not final:
+            print(
+                "Refusing to export ALT text: --corpus alt requires --final "
+                "here too -- exporting its sentences for use with an external "
+                "tool is still spending the held-out corpus on iteration. See "
+                "--corpus alt's own refusal message for the full reasoning.",
+                file=sys.stderr,
+            )
+            return 2
+        prior = read_log()
+        if prior:
+            print(
+                f"WARNING: ALT has already been scored/exported with --final "
+                f"{len(prior)} time(s) before this run.",
+                file=sys.stderr,
+            )
+        record_run(reason)
+        sentences = load_alt(limit=limit)
+    else:
+        sentences = load_mypos(scheme="nopipe", limit=limit)
+
+    lines = [canonical_reference_text(s.words) for s in sentences]
+    Path(path).write_text("\n".join(lines) + "\n", encoding="utf-8")
+    print(f"wrote {len(lines)} reference sentences to {path}", file=sys.stderr)
+    print(
+        f"Run your external segmenter against {path} (one sentence per line, "
+        f"already canonicalized), save its space-separated-words output "
+        f"(one sentence per line, same order), then compare with:\n"
+        f"  burmesenlp bench --corpus {corpus} --diff NAME=path/to/output.txt",
+        file=sys.stderr,
+    )
+    return 0
 
 
 def _run_scheme(
@@ -392,8 +442,20 @@ def main(argv: Optional[List[str]] = None) -> int:
         help="--corpus alt --final only: short note on why you're spending "
         "the held-out measurement now, recorded in the ALT holdout log.",
     )
+    parser.add_argument(
+        "--export-text",
+        metavar="PATH",
+        default=None,
+        help="write one reconstructed reference sentence per line to PATH "
+        "(exactly the text --diff will reconstruct internally) and exit, "
+        "without scoring. Run an external segmenter (e.g. myWord) against "
+        "this file, then feed its output back via --diff.",
+    )
     parser.add_argument("--version", action="version", version=f"burmesenlp {__version__}")
     args = parser.parse_args(argv)
+
+    if args.export_text:
+        return _export_text(args.corpus, args.limit, args.export_text, args.final, args.reason)
 
     if args.corpus == "alt":
         return _run_alt(args.limit, args.diff, args.max_diff, args.final, args.reason, args.freeze_strata)
