@@ -13,6 +13,8 @@ Public API (stable surface — use these from application code):
     word_tokenize / syllable_tokenize / sentence_tokenize / pos_tag
     chunk / chunk_from_tokens / Chunk / ChunkType
     syllable_segment / Token
+    is_known / suggest / correct_words -- spell-checking over the
+        bundled lexicon (opt-in, operates on already-segmented words)
 """
 
 from .chunking import (
@@ -33,6 +35,7 @@ from .mwe import BMWEEngine, MWEEntry, MWEToken
 from .normalize import canonical_order, looks_like_zawgyi, normalize
 from .pipeline import BurmeseNLP, process
 from .pipeline.document import Document
+from .spellcheck import correct_words, is_known, suggest
 from .tag import pos_tag
 from .tokenize import sentence_tokenize, syllable_tokenize, word_tokenize
 from .tokenize.syllable import Token, syllable_segment
@@ -88,5 +91,8 @@ __all__ = [
     "SyntaxSentence",
     "syllable_segment",
     "Token",
+    "is_known",
+    "suggest",
+    "correct_words",
     "__version__",
 ]

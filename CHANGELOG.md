@@ -27,6 +27,22 @@ Keep `__version__` in `src/burmesenlp/__init__.py`, the `version` field in
   share burmesenlp's lexicon-derived home-turf advantage on this corpus.
   See [`docs/developer-guide/bench.md`](docs/developer-guide/bench.md#--export-text-getting-a---diff-compatible-file-for-an-external-tool)
   for the full workflow and numbers.
+- `burmesenlp.spellcheck` (`is_known()` / `suggest()` / `correct_words()`):
+  dictionary spell-checking over already-segmented words, reusing the
+  bundled lexicon -- no new dependency or corpus. Candidate generation is
+  Norvig-style edit distance at the Unicode codepoint level (dropped/
+  swapped/wrong combining marks are the realistic Burmese typo shape);
+  both the query and lexicon entries are compared via `canonical_order()`
+  so a correctly mark-ordered word is never mistaken for a typo of
+  itself. Measured, not assumed: on 40 random Burmese Wikipedia articles,
+  8.50% of `word_tokenize()` tokens (553/6,506) fall outside the ~24k-word
+  lexicon and would be flagged as possible typos -- spot-checking shows
+  numerals, wiki markup, and foreign proper nouns make up a visible share
+  of that, so 8.50% is an upper bound on genuine vocabulary-coverage gaps,
+  not a precise error rate on ordinary prose. Ranking ties are broken
+  alphabetically (no frequency data in the lexicon yet) -- a known v1
+  limitation, documented rather than hidden. See
+  [`docs/developer-guide/spellcheck.md`](docs/developer-guide/spellcheck.md).
 
 ## [1.2.0] - 2026-08-30
 

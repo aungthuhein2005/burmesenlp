@@ -138,4 +138,5 @@ nav:
       - Building docs: developer-guide/docs.md
       - Evaluation (bench): developer-guide/bench.md
       - CLI internals: developer-guide/cli.md
+      - Spell-checking: developer-guide/spellcheck.md
   - References: references.md
