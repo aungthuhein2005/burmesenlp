@@ -163,6 +163,48 @@ burmesenlp bench --diff myword=myword_output.txt
 
 `bench` cannot run third-party segmenters itself.
 
+## `--export-text`: getting a `--diff`-compatible file for an external tool
+
+`--diff` requires the external file to be *exactly* line-aligned to the
+gold corpus — same sentence count, same order, same underlying text. Producing
+that alignment by hand is easy to get wrong (the reference text used
+internally is the *canonicalized, reconstructed, unsegmented* string per
+sentence, not the raw corpus line). `--export-text` writes exactly that:
+
+```bash
+burmesenlp bench --corpus mypos --export-text sentences.txt
+# run your external segmenter against sentences.txt yourself, e.g.:
+python myword.py word -ub dict_ver1/unigram-word.bin -bb dict_ver1/bigram-word.bin sentences.txt myword_output.txt
+burmesenlp bench --corpus mypos --diff myword=myword_output.txt
+```
+
+`--corpus alt --export-text` requires `--final` too, same as scoring ALT
+directly — handing out ALT's sentences for an external tool to segment is
+still spending the held-out measurement, not a scoring-free side channel.
+
+### Measured: burmesenlp vs. myWord (Viterbi word segmenter)
+
+Run once, reported honestly (myWord: MIT-licensed, `ye-kyaw-thu/myWord`,
+cloned locally for this one-time comparison, not vendored or run in CI).
+500 myPOS v3.0 sentences, nopipe scheme, same sample scored both ways:
+
+| | precision | recall | F1 |
+|---|---|---|---|
+| burmesenlp (`word_tokenize()`) | 0.9850 | 0.9159 | 0.9492 |
+| myWord (Viterbi, unigram+bigram) | 0.9111 | 0.9952 | **0.9513** |
+
+Near-tie, opposite error profiles: burmesenlp's greedy dictionary
+longest-match under-splits (misses real boundaries — lower recall) but
+rarely over-splits (higher precision); myWord's statistical decoder does
+the reverse. Worth stating plainly: myWord's dictionaries are trained on
+its own separate "myWord Corpus Ver. 1.0" (12M+ words, per its README),
+**not** myPOS — unlike burmesenlp's bundled lexicon, which *is* derived
+from myPOS (100% word-form overlap, see the train-on-test caution
+elsewhere in this doc). So this comparison is not neutral ground: it has
+whatever advantage myPOS-vocabulary familiarity gives burmesenlp, and
+myWord is still essentially tied on F1 without that advantage on this
+specific corpus.
+
 ## Licensing
 
 Every gold corpus here is CC BY-NC-SA (NonCommercial) — cached locally on

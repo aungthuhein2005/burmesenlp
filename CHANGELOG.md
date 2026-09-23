@@ -10,6 +10,24 @@ Keep `__version__` in `src/burmesenlp/__init__.py`, the `version` field in
 
 ## [Unreleased]
 
+### Added
+
+- `--export-text PATH` in `burmesenlp bench`: writes the gold corpus's
+  reconstructed reference sentences (one per line, in `--diff`'s exact
+  expected format) so an external segmenter's output can be scored against
+  them via the existing `--diff NAME=PATH` mechanism. `--corpus alt
+  --export-text` requires `--final`, same as scoring ALT directly, since
+  handing out ALT's sentences for external segmentation still spends the
+  held-out measurement. Used to run a real comparison against myWord
+  (MIT-licensed Viterbi word segmenter, `ye-kyaw-thu/myWord`) on 500 myPOS
+  v3.0 nopipe sentences: burmesenlp P=0.9850/R=0.9159/F1=0.9492 vs. myWord
+  P=0.9111/R=0.9952/F1=**0.9513** — a near-tie with opposite error profiles
+  (burmesenlp under-splits, myWord over-splits), notable because myWord's
+  dictionaries come from an independent corpus, not myPOS, so it does not
+  share burmesenlp's lexicon-derived home-turf advantage on this corpus.
+  See [`docs/developer-guide/bench.md`](docs/developer-guide/bench.md#--export-text-getting-a---diff-compatible-file-for-an-external-tool)
+  for the full workflow and numbers.
+
 ## [1.2.0] - 2026-08-30
 
 Fixes a Windows-only bug where the CLI silently mis-decoded piped Myanmar

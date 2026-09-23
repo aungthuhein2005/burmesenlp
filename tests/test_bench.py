@@ -315,6 +315,35 @@ def test_load_external_segmentation(tmp_path):
     assert result == [["ab", "cd"], ["e", "fg"]]
 
 
+def test_export_text_writes_diff_compatible_reference_lines(tmp_path, monkeypatch):
+    """--export-text must write exactly what run_diff() will reconstruct
+    internally (canonical_reference_text per sentence), one per line, so
+    an external segmenter's output on this file is guaranteed alignable
+    via --diff -- not a similar-looking format that happens to work."""
+    from burmesenlp.bench.cli import _export_text
+
+    fake_sentences = [
+        GoldSentence(words=["ab", "cd"], tags=[None, None], raw_line="ab cd"),
+        GoldSentence(words=["e", "fg", "h"], tags=[None, None, None], raw_line="e fg h"),
+    ]
+    monkeypatch.setattr("burmesenlp.bench.cli.load_mypos", lambda scheme, limit: fake_sentences)
+
+    out_path = tmp_path / "exported.txt"
+    rc = _export_text("mypos", None, str(out_path), final=False, reason=None)
+    assert rc == 0
+
+    lines = out_path.read_text(encoding="utf-8").splitlines()
+    assert lines == [canonical_reference_text(s.words) for s in fake_sentences]
+
+
+def test_export_text_alt_requires_final(tmp_path):
+    from burmesenlp.bench.cli import _export_text
+
+    rc = _export_text("alt", None, str(tmp_path / "out.txt"), final=False, reason=None)
+    assert rc == 2
+    assert not (tmp_path / "out.txt").exists()
+
+
 @pytest.mark.bench
 @pytest.mark.skipif(
     os.environ.get("BURMESENLP_BENCH_TEST") != "1",
